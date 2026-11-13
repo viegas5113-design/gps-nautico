@@ -1,0 +1,17 @@
+{
+  "name": "GPS Náutico Independente",
+  "short_name": "GPS Náutico",
+  "description": "GPS Náutico Móvel com Importação GPX e Cartografia Marítima",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#09101d",
+  "theme_color": "#0284c7",
+  "icons": [
+    {
+      "src": "static/avatar.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg"
+    }
+  ]
+}

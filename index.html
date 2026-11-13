@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#09101d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>GPS Náutico Independente</title>
+
+  <!-- PWA Manifest & Ícones -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="static/avatar.jpg">
+  <link rel="icon" type="image/jpeg" href="static/avatar.jpg">
+
+  <!-- Estilos Leaflet e MarkerCluster Locais -->
+  <link rel="stylesheet" href="static/vendor/leaflet.css">
+  <link rel="stylesheet" href="static/vendor/MarkerCluster.css">
+  <link rel="stylesheet" href="static/vendor/MarkerCluster.Default.css">
+  
+  <!-- Estilos Customizados do GPS Móvel -->
+  <link rel="stylesheet" href="static/gps.css">
+</head>
+<body>
+  <div id="app-container">
+    <!-- MAPA LEAFLET -->
+    <div id="mapa"></div>
+
+    <!-- BARRA SUPERIOR TÁTICA -->
+    <header class="top-bar">
+      <div class="top-brand">
+        <img class="top-avatar" src="static/avatar.jpg" alt="GPS Náutico">
+        <div class="top-title">
+          <span>GPS Náutico</span>
+          <span class="top-sub">Sistema Independente</span>
+        </div>
+      </div>
+
+      <!-- Badge de Estado do GPS do Telemóvel -->
+      <div id="gpsBadge" class="gps-badge a-procurar">
+        <div class="gps-dot"></div>
+        <span id="gpsBadgeTxt">A iniciar GPS...</span>
+      </div>
+
+      <!-- Ações Rápidas de Topo -->
+      <div class="top-actions">
+        <button id="wakeLockBadge" class="btn-icon" title="Ecrã Ativo" style="display:none;color:#fbbf24;">
+          💡
+        </button>
+        <button id="btnModoNoturno" class="btn-icon" title="Modo Noturno Tático">
+          🌙
+        </button>
+        <button id="btnFullscreen" class="btn-icon" title="Ecrã Completo">
+          ⛶
+        </button>
+        <button id="btnAbrirDefinicoes" class="btn-icon" title="Definições">
+          ⚙️
+        </button>
+      </div>
+    </header>
+
+    <!-- TELEMETRIA HUD FLUTUANTE -->
+    <div class="hud-container">
+      <!-- Cartão Principal de Instrumentos -->
+      <div class="hud-card">
+        <div class="hud-grid">
+          <!-- SOG (Velocidade) -->
+          <div id="hudCardVelocidade" class="hud-item" style="cursor:pointer;" title="Toca para alternar Nós / km/h">
+            <span class="hud-label">SOG (VELOCIDADE)</span>
+            <div class="hud-valor-destaque">
+              <span id="hudVelocidade">0.0</span>
+              <span id="hudVelUnidade" class="hud-unidade">KTS</span>
+            </div>
+          </div>
+
+          <!-- COG (Rumo) -->
+          <div class="hud-item">
+            <span class="hud-label">COG (RUMO)</span>
+            <div class="hud-valor-destaque" style="color:#ffdd00;">
+              <span id="hudRumo">---°</span>
+              <span id="hudRumoCardeal" class="hud-unidade">N</span>
+            </div>
+          </div>
+
+          <!-- Coordenadas Náuticas -->
+          <div class="hud-item">
+            <span class="hud-label">POSIÇÃO GPS (DDM)</span>
+            <div id="hudCoordenadas" class="hud-coords" title="Toca para alternar formato">
+              <div>--° --.---' N</div>
+              <div>---° --.---' W</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hud-extra">
+          <span>Precisão: <b id="hudPrecisao">±--m</b></span>
+          <span>Alt: <b id="hudAltitude">--m</b></span>
+          <span>Sonda: <b id="hudBatimetria" style="color:#fbbf24;font-size:13px;">-- braças</b></span>
+          <span>Sinal: <b style="color:#10b981;">HTTPS Seguro</b></span>
+        </div>
+      </div>
+
+      <!-- Banner de Navegação Ativa (Go-To Waypoint) -->
+      <div id="navBanner" class="nav-banner">
+        <div class="nav-header">
+          <span id="navTargetNome" class="nav-target">⚓ Waypoint Selecionado</span>
+          <button class="nav-fechar" onclick="window.cancelarNavegacao()" title="Cancelar Navegação">✕</button>
+        </div>
+        <div class="nav-stats">
+          <div>
+            <div id="navDtw" class="nav-stat-val">-- NM</div>
+            <div class="nav-stat-lbl">DTW (Distância)</div>
+          </div>
+          <div>
+            <div id="navBtw" class="nav-stat-val">---°</div>
+            <div class="nav-stat-lbl">BTW (Rumo)</div>
+          </div>
+          <div>
+            <div id="navEta" class="nav-stat-val">--:--</div>
+            <div class="nav-stat-lbl">ETA (Chegada)</div>
+          </div>
+          <div>
+            <div class="nav-stat-val" style="color:#7dd3fc;">CTS</div>
+            <div class="nav-stat-lbl">Governo</div>
+          </div>
+        </div>
+        <div class="nav-steer-box">
+          <span style="font-size:10px;color:#cbd5e1;">Ajuste de Rumo ao Ponto:</span>
+          <span id="navSteerBadge" class="nav-steer-badge steer-ok">CALCULANDO...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- BARRA DE AÇÃO INFERIOR DOCK -->
+    <nav class="bottom-dock">
+      <button id="btnSeguirGps" class="dock-btn ativo">
+        <span class="dock-icon">🎯</span>
+        <span>Seguir</span>
+      </button>
+
+      <button id="btnMarcarPonto" class="dock-btn">
+        <span class="dock-icon">📍</span>
+        <span>Marcar MOB</span>
+      </button>
+
+      <button id="btnGravarTrilho" class="dock-btn">
+        <span class="dock-icon">🔴</span>
+        <span>Gravar Rasto</span>
+      </button>
+
+      <button id="btnAbrirImportar" class="dock-btn">
+        <span class="dock-icon">📂</span>
+        <span>Importar GPX</span>
+      </button>
+
+      <button id="btnAbrirWaypoints" class="dock-btn" style="position:relative;">
+        <span class="dock-icon">📋</span>
+        <span>Waypoints</span>
+        <span id="badgeCountWaypoints" class="badge-count">0</span>
+      </button>
+    </nav>
+
+    <!-- GAVETA DESLIZANTE DE WAYPOINTS -->
+    <aside id="drawerWaypoints" class="drawer">
+      <div id="drawerPuxador" class="drawer-puxador"></div>
+      <div class="drawer-header">
+        <span class="drawer-title">
+          <span>⚓ Pesqueiros &amp; Waypoints</span>
+        </span>
+        <button id="btnFecharGaveta" class="btn-fechar">✕</button>
+      </div>
+
+      <div class="drawer-pesquisa-box">
+        <input id="inputPesquisaWaypoints" class="drawer-pesquisa" type="text" placeholder="🔍 Pesquisar marca, cabeço, pedra...">
+      </div>
+
+      <div class="drawer-filtros">
+        <button class="drawer-filtro-btn ativo" data-filtro="todos">Todos</button>
+        <button class="drawer-filtro-btn" data-filtro="proximos">🧭 Mais Próximos</button>
+        <button class="drawer-filtro-btn" data-filtro="alfabetica">🔤 Nome A-Z</button>
+      </div>
+
+      <div id="drawerLista" class="drawer-lista">
+        <!-- Itens inseridos dinamicamente por JS -->
+      </div>
+    </aside>
+
+    <!-- MODAL DE IMPORTAÇÃO GPX -->
+    <div id="modalImportar" class="modal-overlay">
+      <div class="modal-card">
+        <div class="modal-header">
+          <span class="modal-title">📂 Importar GPX Náutico</span>
+          <button id="btnFecharModalImportar" class="btn-fechar">✕</button>
+        </div>
+
+        <!-- Dropzone de Ficheiro do Telemóvel -->
+        <input type="file" id="inputFicheiroGpx" accept=".gpx,.xml" style="display:none;">
+        <div id="gpxDropzone" class="gpx-dropzone">
+          <div class="gpx-dropzone-icon">📁</div>
+          <div class="gpx-dropzone-txt">Escolher Ficheiro GPX do Telemóvel</div>
+          <div class="gpx-dropzone-sub">Suporta waypoints, marcas de pesca, rotas e rastos</div>
+        </div>
+
+        <!-- Pesqueiros Predefinidos no Servidor -->
+        <div>
+          <span style="font-size:12px;font-weight:bold;color:#38bdf8;text-transform:uppercase;letter-spacing:0.5px;">
+            🌊 Pesqueiros Guardados no Posto de Bordo:
+          </span>
+          <div id="pesqueirosBordoLista" class="pesqueiros-bordo-lista">
+            <div style="font-size:12px;color:#94a3b8;padding:8px;">A carregar lista de pesqueiros...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL DE DEFINIÇÕES -->
+    <div id="modalDefinicoes" class="modal-overlay">
+      <div class="modal-card">
+        <div class="modal-header">
+          <span class="modal-title">⚙️ Definições do GPS Náutico</span>
+          <button id="btnFecharDefinicoes" class="btn-fechar">✕</button>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px;font-size:13px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.08);">
+            <span>🔒 Ligação Exclusiva HTTPS</span>
+            <span style="color:#10b981;font-weight:bold;">Ativa (Porta 8443)</span>
+          </div>
+          <div style="font-size:11px;color:#94a3b8;">
+            O HTTPS garante acesso sem restrições ao GPS de alta precisão do smartphone em qualquer navegador moderno (Chrome, Safari, Firefox).
+          </div>
+
+          <div style="margin-top:10px;padding:12px;background:rgba(0,0,0,0.3);border-radius:8px;">
+            <b style="color:#38bdf8;">💡 Dica para Navegação em Alto-Mar:</b>
+            <p style="margin:4px 0 0 0;font-size:11.5px;color:#cbd5e1;line-height:1.4;">
+              O GPS do telemóvel comunica diretamente com os satélites mesmo sem rede de telemóvel ou internet móvel. Mantém o ecrã ativo para monitorizar o rumo e distância aos pesqueiros.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOTIFICAÇÃO TOAST -->
+    <div id="toastNotificacao" class="toast">Mensagem</div>
+  </div>
+
+  <!-- SCRIPTS LOCAIS -->
+  <script src="static/vendor/leaflet.js"></script>
+  <script src="static/vendor/leaflet.markercluster.js"></script>
+  <script src="static/vendor/togeojson.umd.js"></script>
+  <script src="static/gps.js"></script>
+</body>
+</html>
