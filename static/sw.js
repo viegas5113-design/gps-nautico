@@ -1,7 +1,7 @@
 // Service Worker Offline-First para o GPS Náutico Independente
 // Funciona 100% no telemóvel mesmo com o computador desligado e sem internet no mar.
 
-const CACHE_NAME = 'gps-nautico-offline-v3';
+const CACHE_NAME = 'gps-nautico-offline-v4';
 const TILE_CACHE_NAME = 'gps-nautico-tiles-v1';
 
 const RECURSOS_ESSENCIAIS = [

@@ -97,7 +97,7 @@
     terrestre.addTo(estado.mapa);
     nautica.addTo(estado.mapa);
 
-    // 5. Curvas Batimétricas Algarvias (5 a 50 braças do Vigilante)
+    // 5. Curvas Batimétricas Algarvias (2 a 51 braças do Vigilante)
     window.dadosBatimetria = [];
     const curvasLocais = L.geoJSON(null, {
       style: (feature) => {
@@ -145,7 +145,7 @@
           <div style="font-family:sans-serif;font-size:13px;line-height:1.4;color:#0f172a;min-width:160px;">
             <b style="color:#0284c7;font-size:14px;">⚓ Isobática Batimétrica</b><br>
             Profundidade: <b style="font-size:16px;color:#d97706;">${bracas} braças</b> <span style="color:#64748b;">(${metros} m)</span><br>
-            <span style="font-size:11px;color:#64748b;">Costa Sul de Portugal • 5-50 braças</span>
+            <span style="font-size:11px;color:#64748b;">Costa Sul de Portugal • 2-51 braças</span>
           </div>
         `);
 
@@ -216,7 +216,7 @@
       },
       {
         '⚓ Balizagem & Marcas (OpenSeaMap)': nautica,
-        '🌊 Curvas de Batimetria (5 a 50 braças)': curvasLocais
+        '🌊 Curvas de Batimetria (2 a 51 braças)': curvasLocais
       },
       { position: 'topright', collapsed: true }
     ).addTo(estado.mapa);
