@@ -35,6 +35,9 @@
     termoPesquisa: ''
   };
 
+  window.__vigilanteEstadoGps = estado;
+  const MODO_ESTATICO_WEB = location.hostname.includes('github.io') || location.protocol === 'file:';
+
   // Coordenadas iniciais padrão (Costa do Algarve — Portimão / Lagos / Sagres)
   const COORD_PADRAO = [37.1105, -8.5680];
 
@@ -364,6 +367,7 @@
   }
 
   function sincronizarTelemetriaBordo() {
+    if (MODO_ESTATICO_WEB) return;
     // Sincronizar apenas sonda ou telemetria auxiliar, NUNCA sobrepor a posição do utilizador
     fetch('/api/maritimo/telemetria')
       .then(r => r.ok ? r.json() : null)
@@ -618,6 +622,7 @@
 
     // Precisão & Altitude
     const elPrecisao = document.getElementById('hudPrecisao');
+    if (typeof window.atualizarPainelAorus === 'function') window.atualizarPainelAorus();
     if (elPrecisao) {
       elPrecisao.textContent = `±${Math.round(precisao)}m`;
     }
@@ -682,12 +687,14 @@
       }
       if (heading !== null && heading !== undefined) {
         estado.rumoBussola = heading;
+        if (typeof window.atualizarPainelAorus === 'function') window.atualizarPainelAorus();
       }
     }, true);
 
     window.addEventListener('deviceorientation', (e) => {
       if (estado.rumoBussola === null && e.alpha !== null) {
         estado.rumoBussola = 360 - e.alpha;
+        if (typeof window.atualizarPainelAorus === 'function') window.atualizarPainelAorus();
       }
     }, true);
   }
@@ -903,6 +910,7 @@
 
     // Atualizar cálculo e traçar linha
     atualizarNavegacaoAtiva();
+    if (typeof window.atualizarPainelAorus === 'function') window.atualizarPainelAorus();
     mostrarNotificacao(`Navegação ativa para: ${wpt.nome}`, 3000);
   };
 
@@ -915,6 +923,7 @@
       estado.mapa.removeLayer(estado.linhaNavegacaoAtiva);
       estado.linhaNavegacaoAtiva = null;
     }
+    if (typeof window.atualizarPainelAorus === 'function') window.atualizarPainelAorus();
     mostrarNotificacao('Navegação cancelada.', 2000);
   };
 
@@ -1292,6 +1301,7 @@
   // ==========================================
   let ultimoEnvioServidor = 0;
   function transmitirGpsAoServidor(lat, lon, sog, cog) {
+    if (MODO_ESTATICO_WEB) return;
     const agora = Date.now();
     // Limitar transmissão a cada 2 segundos para não sobrecarregar
     if (agora - ultimoEnvioServidor < 2000) return;
@@ -1538,7 +1548,7 @@
   // ==========================================
   function registarServiceWorker() {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw_gps.js')
+      navigator.serviceWorker.register('./sw.js')
         .then(() => console.log('Vigilante GPS Service Worker registado'))
         .catch(e => console.warn('Falha no registo SW:', e));
     }

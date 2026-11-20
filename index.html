@@ -43,6 +43,12 @@
         <span id="gpsBadgeTxt">A iniciar GPS...</span>
       </div>
 
+      <!-- Seletor Rápido de Modo (GPS Aorus / GPS Náutico) -->
+      <div class="modo-switch" role="tablist" aria-label="Modo de Navegação">
+        <button id="btnModoAorus" type="button" class="modo-btn" onclick="alternarModoGps('aorus')" title="Modo GPS Aorus">🧭 Aorus</button>
+        <button id="btnModoNautico" type="button" class="modo-btn ativo" onclick="alternarModoGps('nautico')" title="Modo GPS Náutico">⚓ Náutico</button>
+      </div>
+
       <!-- Ações Rápidas de Topo -->
       <div class="top-actions">
         <button id="btnPastaEventos" type="button" onclick="alternarPastaEventos()" title="Pasta de Eventos" style="background:#b45309;color:#fff;border:1px solid #fbbf24;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">
@@ -271,6 +277,86 @@
       <div id="pastaEventosLista" style="padding:10px 12px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;flex:1;"></div>
     </aside>
 
+    <!-- PAINEL MODO GPS AORUS (100% HTML/JS/CSS) -->
+    <section id="aorusPanel" class="aorus-panel" style="display:none;" aria-label="Modo GPS Aorus">
+      <div class="aorus-grid-top">
+        <!-- Velocidade em Nós -->
+        <div class="aorus-card aorus-vel-card">
+          <div class="aorus-label">VELOCIDADE (SOG)</div>
+          <div class="aorus-vel-valor">
+            <span id="aorusVelNos">0.0</span>
+            <span class="aorus-unit">NÓS</span>
+          </div>
+          <div id="aorusVelKmh" class="aorus-sub">0.0 km/h</div>
+        </div>
+
+        <!-- Rumo e Bússola -->
+        <div class="aorus-card aorus-bussola-card">
+          <div class="aorus-label">RUMO / BÚSSOLA</div>
+          <div class="aorus-bussola-wrap">
+            <svg class="aorus-bussola-svg" viewBox="0 0 140 140" aria-hidden="true">
+              <circle cx="70" cy="70" r="64" fill="#060d18" stroke="#1e3a5f" stroke-width="3"/>
+              <g id="aorusBussolaRosa" style="transform-origin:70px 70px;transition:transform 0.2s ease-out;">
+                <text x="70" y="20" text-anchor="middle" fill="#ef4444" font-size="13" font-weight="800">N</text>
+                <text x="122" y="75" text-anchor="middle" fill="#cbd5e1" font-size="12" font-weight="700">E</text>
+                <text x="70" y="130" text-anchor="middle" fill="#cbd5e1" font-size="12" font-weight="700">S</text>
+                <text x="18" y="75" text-anchor="middle" fill="#cbd5e1" font-size="12" font-weight="700">W</text>
+                <line x1="70" y1="26" x2="70" y2="34" stroke="#ef4444" stroke-width="2.5"/>
+                <line x1="70" y1="106" x2="70" y2="114" stroke="#475569" stroke-width="2"/>
+                <line x1="26" y1="70" x2="34" y2="70" stroke="#475569" stroke-width="2"/>
+                <line x1="106" y1="70" x2="114" y2="70" stroke="#475569" stroke-width="2"/>
+              </g>
+              <g id="aorusBussolaAlvo" style="display:none;transform-origin:70px 70px;transition:transform 0.2s ease-out;">
+                <polygon points="70,16 63,34 77,34" fill="#ec4899"/>
+              </g>
+              <polygon points="70,40 62,82 70,75 78,82" fill="#38bdf8"/>
+            </svg>
+            <div class="aorus-rumo-txt">
+              <span id="aorusRumoGraus">---°</span>
+              <span id="aorusRumoCardeal" class="aorus-cardeal">N</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Coordenadas Grandes -->
+      <div id="aorusCoordsBox" class="aorus-card aorus-coords-card" title="Toca para alternar formato de coordenadas">
+        <div class="aorus-coords-head">
+          <span class="aorus-label">POSIÇÃO ATUAL (TOCA PARA FORMATO)</span>
+          <span class="aorus-meta">Prec: <b id="aorusPrecisao">±--m</b> · Sonda: <b id="aorusSonda">-- braças</b></span>
+        </div>
+        <div id="aorusLat" class="aorus-coord-big">--° --.---' N</div>
+        <div id="aorusLon" class="aorus-coord-big">---° --.---' W</div>
+      </div>
+
+      <!-- Pesqueiro Escolhido: Distância e Rumo -->
+      <div class="aorus-card aorus-alvo-card">
+        <div class="aorus-alvo-head">
+          <span id="aorusAlvoNome" class="aorus-alvo-nome">Sem pesqueiro selecionado</span>
+          <button id="aorusBtnCancelarNav" type="button" class="aorus-btn-cancelar" onclick="window.cancelarNavegacao()" style="display:none;">✕ Cancelar</button>
+        </div>
+        <div class="aorus-alvo-stats">
+          <div>
+            <div id="aorusAlvoDtw" class="aorus-stat-val">-- NM</div>
+            <div class="aorus-stat-lbl">DISTÂNCIA</div>
+          </div>
+          <div>
+            <div id="aorusAlvoBtw" class="aorus-stat-val">---°</div>
+            <div class="aorus-stat-lbl">RUMO AO PONTO</div>
+          </div>
+          <div>
+            <div id="aorusAlvoEta" class="aorus-stat-val">--:--</div>
+            <div class="aorus-stat-lbl">CHEGADA (ETA)</div>
+          </div>
+        </div>
+        <div id="aorusAlvoSteer" class="aorus-steer">Escolhe um pesqueiro</div>
+        <div class="aorus-acoes">
+          <button id="aorusBtnEscolherAlvo" type="button" class="aorus-btn aorus-btn-primario">🎯 Escolher Pesqueiro</button>
+          <button id="aorusBtnMarcarPonto" type="button" class="aorus-btn aorus-btn-secundario">📍 Marcar Ponto</button>
+        </div>
+      </div>
+    </section>
+
     <!-- NOTIFICAÇÃO TOAST -->
     <div id="toastNotificacao" class="toast">Mensagem</div>
   </div>
@@ -281,5 +367,6 @@
   <script src="static/vendor/togeojson.umd.js"></script>
   <script src="static/gps.js"></script>
   <script src="static/pasta_eventos.js"></script>
+  <script src="static/aorus.js"></script>
 </body>
 </html>
