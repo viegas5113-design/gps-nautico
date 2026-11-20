@@ -61,20 +61,12 @@
     const painelAorus = document.getElementById('aorusPanel');
     const btnAorus = document.getElementById('btnModoAorus');
     const btnNautico = document.getElementById('btnModoNautico');
-    const btnPasta = document.getElementById('btnPastaEventos');
 
     if (painelAorus) {
       painelAorus.style.display = modoAtual === 'aorus' ? 'flex' : 'none';
     }
     if (btnAorus) btnAorus.classList.toggle('ativo', modoAtual === 'aorus');
     if (btnNautico) btnNautico.classList.toggle('ativo', modoAtual === 'nautico');
-    if (btnPasta) {
-      btnPasta.style.display = modoAtual === 'nautico' ? 'inline-flex' : 'none';
-    }
-
-    if (modoAtual === 'aorus' && typeof window.alternarPastaEventos === 'function') {
-      window.alternarPastaEventos(false);
-    }
 
     if (modoAtual === 'nautico' && window.mapaGpsNautico) {
       setTimeout(() => window.mapaGpsNautico.invalidateSize(), 120);

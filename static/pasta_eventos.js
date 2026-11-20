@@ -178,9 +178,14 @@
                 <span style="color:${info.borda};font-weight:600;">${escaparHtml(info.nome)}</span> · ${lat}, ${lon}
               </div>
             </div>
-            <button type="button" onclick="window.apagarEventoGpsNautico('${escaparHtml(ev.id)}')" style="padding:5px 8px;border:none;border-radius:6px;background:#991b1b;color:#fff;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;" title="Apagar este ponto">
-              🗑️ Apagar
-            </button>
+            <div style="display:flex;gap:4px;flex-shrink:0;">
+              <button type="button" onclick="window.navegarEventoGpsNautico('${escaparHtml(ev.id)}')" style="padding:5px 8px;border:none;border-radius:6px;background:#0284c7;color:#fff;font-size:11px;font-weight:700;cursor:pointer;" title="Navegar para este ponto">
+                🧭 Ir
+              </button>
+              <button type="button" onclick="window.apagarEventoGpsNautico('${escaparHtml(ev.id)}')" style="padding:5px 8px;border:none;border-radius:6px;background:#991b1b;color:#fff;font-size:11px;font-weight:700;cursor:pointer;" title="Apagar este ponto">
+                🗑️ Apagar
+              </button>
+            </div>
           </div>
         `;
       })
@@ -193,6 +198,10 @@
   }
 
   function obterCoordenadasAtuais() {
+    const posGps = window.__vigilanteEstadoGps && window.__vigilanteEstadoGps.posicao;
+    if (posGps && Number.isFinite(posGps.lat) && Number.isFinite(posGps.lon)) {
+      return { lat: posGps.lat, lon: posGps.lon };
+    }
     const m = obterMapa();
     if (m) {
       const c = m.getCenter();
@@ -378,7 +387,34 @@
     const ev = eventos.find((e) => String(e.id) === String(id));
     const m = obterMapa();
     if (!ev || !m) return;
+    if (typeof window.alternarModoGps === 'function') {
+      window.alternarModoGps('nautico');
+    }
     m.setView([Number(ev.lat), Number(ev.lon)], Math.max(m.getZoom(), 14));
+  };
+
+  window.navegarEventoGpsNautico = function navegarEventoGpsNautico(id) {
+    const ev = eventos.find((e) => String(e.id) === String(id));
+    const estado = window.__vigilanteEstadoGps;
+    if (!ev || !estado) return;
+    const alvo = {
+      id: ev.id,
+      nome: ev.nome,
+      lat: Number(ev.lat),
+      lon: Number(ev.lon),
+      camada: null
+    };
+    estado.waypointAtivo = alvo;
+    const banner = document.getElementById('navBanner');
+    const nomeEl = document.getElementById('navTargetNome');
+    if (banner && nomeEl) {
+      nomeEl.textContent = `⚓ ${alvo.nome}`;
+      banner.style.display = 'block';
+    }
+    window.alternarPastaEventos(false);
+    if (typeof window.atualizarPainelAorus === 'function') {
+      window.atualizarPainelAorus();
+    }
   };
 
   window.apagarEventoGpsNautico = function apagarEventoGpsNautico(id) {
