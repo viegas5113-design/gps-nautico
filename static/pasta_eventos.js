@@ -114,11 +114,13 @@
     return camadaEventos;
   }
 
-  function criarIconeLeaflet(tipo) {
+  function criarIconeLeaflet(tipo, simboloCustom, corCustom) {
     const info = TIPOS_MARCA[tipo] || TIPOS_MARCA.geral;
+    const icone = simboloCustom || info.icone;
+    const cor = corCustom || info.cor;
     return L.divIcon({
       className: 'pasta-evento-pin',
-      html: `<div style="width:32px;height:32px;border-radius:50%;background:${info.cor};border:2px solid ${info.borda};display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,0.45);color:#fff;">${info.icone}</div>`,
+      html: `<div style="width:32px;height:32px;border-radius:50%;background:${cor};border:2px solid ${info.borda};display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,0.45);color:#fff;">${icone}</div>`,
       iconSize: [32, 32],
       iconAnchor: [16, 16],
       popupAnchor: [0, -16],
@@ -135,15 +137,21 @@
       const lon = Number(ev.lon);
       if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
       const info = TIPOS_MARCA[ev.tipo] || TIPOS_MARCA.geral;
-      const marker = L.marker([lat, lon], { icon: criarIconeLeaflet(ev.tipo) });
+      const iconeMostrar = ev.simbolo || info.icone;
+      const marker = L.marker([lat, lon], { icon: criarIconeLeaflet(ev.tipo, ev.simbolo, ev.cor) });
       const popupHtml = `
-        <div style="min-width:190px;font-family:system-ui,sans-serif;">
-          <div style="font-weight:700;font-size:14px;margin-bottom:4px;">${info.icone} ${escaparHtml(ev.nome)}</div>
+        <div style="min-width:195px;font-family:system-ui,sans-serif;">
+          <div style="font-weight:700;font-size:14px;margin-bottom:4px;">${iconeMostrar} ${escaparHtml(ev.nome)}</div>
           <div style="font-size:12px;color:#475569;margin-bottom:4px;">Tipo: <strong>${escaparHtml(info.nome)}</strong></div>
           <div style="font-size:12px;font-family:monospace;color:#0f172a;margin-bottom:8px;">${lat.toFixed(5)}, ${lon.toFixed(5)}</div>
-          <button type="button" onclick="window.apagarEventoGpsNautico('${escaparHtml(ev.id)}')" style="width:100%;padding:6px 10px;border:none;border-radius:6px;background:#dc2626;color:#fff;font-weight:700;cursor:pointer;font-size:12px;">
-            🗑️ Apagar
-          </button>
+          <div style="display:flex;gap:6px;">
+            <button type="button" onclick="window.navegarEventoGpsNautico('${escaparHtml(ev.id)}')" style="flex:1;padding:6px 8px;border:none;border-radius:6px;background:#0284c7;color:#fff;font-weight:700;cursor:pointer;font-size:12px;">
+              🧭 Ir
+            </button>
+            <button type="button" onclick="window.apagarEventoGpsNautico('${escaparHtml(ev.id)}')" style="flex:1;padding:6px 8px;border:none;border-radius:6px;background:#dc2626;color:#fff;font-weight:700;cursor:pointer;font-size:12px;">
+              🗑️ Apagar
+            </button>
+          </div>
         </div>
       `;
       marker.bindPopup(popupHtml);
@@ -154,7 +162,9 @@
   function renderizarLista() {
     const listaEl = document.getElementById('pastaEventosLista');
     const contadorEl = document.getElementById('pastaEventosContador');
+    const btnPasta = document.getElementById('btnPastaEventos');
     if (contadorEl) contadorEl.textContent = String(eventos.length);
+    if (btnPasta) btnPasta.textContent = `📂 Pasta de Eventos (${eventos.length})`;
     atualizarRotuloFicheiro();
     if (!listaEl) return;
 
@@ -169,10 +179,10 @@
         const lat = Number(ev.lat).toFixed(5);
         const lon = Number(ev.lon).toFixed(5);
         return `
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:#0f172a;border:1px solid #334155;border-left:4px solid ${info.cor};border-radius:8px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:#0f172a;border:1px solid #334155;border-left:4px solid ${ev.cor || info.cor};border-radius:8px;">
             <div onclick="window.centrarEventoGpsNautico('${escaparHtml(ev.id)}')" style="flex:1;min-width:0;cursor:pointer;" title="Clica para centrar na carta náutica">
               <div style="font-weight:700;font-size:13px;color:#f8fafc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                ${info.icone} ${escaparHtml(ev.nome)}
+                ${ev.simbolo || info.icone} ${escaparHtml(ev.nome)}
               </div>
               <div style="font-size:11px;color:#94a3b8;margin-top:2px;">
                 <span style="color:${info.borda};font-weight:600;">${escaparHtml(info.nome)}</span> · ${lat}, ${lon}
@@ -362,6 +372,41 @@
       b.style.borderColor = ativo ? info.borda : '#334155';
       b.style.color = '#ffffff';
     });
+  };
+
+  window.marcarRapidoAorus = function marcarRapidoAorus(simbolo, nomeBase, cor, categoria) {
+    const { lat, lon } = obterCoordenadasAtuais();
+    const tipo = TIPOS_MARCA[categoria] ? categoria : 'geral';
+    const contador = eventos.filter((e) => (e.simbolo || '') === simbolo).length + 1;
+    const inputNome = document.getElementById('pastaEventoNome');
+    const nomeManual = inputNome ? inputNome.value.trim() : '';
+    const novo = {
+      id: `ev_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      tipo,
+      simbolo: simbolo || TIPOS_MARCA[tipo].icone,
+      cor: cor || TIPOS_MARCA[tipo].cor,
+      nome: nomeManual || `${nomeBase} #${contador}`,
+      lat: Number(lat),
+      lon: Number(lon),
+      criadoEm: new Date().toISOString(),
+    };
+    if (inputNome) inputNome.value = '';
+    eventos.unshift(novo);
+    guardarLocal();
+    renderizarTudo();
+  };
+
+  window.exportarELimparGpxEventos = async function exportarELimparGpxEventos() {
+    if (eventos.length === 0) {
+      alert('Ainda não há pontos na Pasta de Eventos para exportar.');
+      return;
+    }
+    await window.guardarGpxAtualizado();
+    if (confirm('GPX exportado! Queres limpar os pontos da Pasta de Eventos agora?')) {
+      eventos = [];
+      guardarLocal();
+      renderizarTudo();
+    }
   };
 
   window.marcarEventoAtual = function marcarEventoAtual() {

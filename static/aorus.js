@@ -52,6 +52,23 @@
     return `${String(g).padStart(pad, '0')}° ${String(m).padStart(2, '0')}' ${s}" ${hem}`;
   }
 
+  let vista3dAtiva = false;
+
+  window.alternarVista3d = function alternarVista3d() {
+    vista3dAtiva = !vista3dAtiva;
+    const mapaEl = document.getElementById('mapa');
+    const btn = document.getElementById('btnVista3d');
+    if (mapaEl) mapaEl.classList.toggle('vista-3d', vista3dAtiva);
+    if (btn) {
+      btn.classList.toggle('ativo', vista3dAtiva);
+      btn.style.background = vista3dAtiva ? '#0284c7' : '';
+      btn.textContent = vista3dAtiva ? '2D' : '3D';
+    }
+    if (window.mapaGpsNautico) {
+      setTimeout(() => window.mapaGpsNautico.invalidateSize(), 250);
+    }
+  };
+
   window.alternarModoGps = function alternarModoGps(novoModo) {
     modoAtual = novoModo === 'aorus' ? 'aorus' : 'nautico';
     try {
