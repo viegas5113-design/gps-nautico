@@ -45,6 +45,9 @@
 
       <!-- Ações Rápidas de Topo -->
       <div class="top-actions">
+        <button id="btnPastaEventos" type="button" onclick="alternarPastaEventos()" title="Pasta de Eventos" style="background:#b45309;color:#fff;border:1px solid #fbbf24;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">
+          📂 Pasta de Eventos
+        </button>
         <button id="wakeLockBadge" class="btn-icon" title="Ecrã Ativo" style="display:none;color:#fbbf24;">
           💡
         </button>
@@ -241,6 +244,29 @@
       </div>
     </div>
 
+    <!-- PASTA DE EVENTOS RECOLHÍVEL (ESCONDIDA POR DEFEITO) -->
+    <aside id="pastaEventosPainel" style="display:none;position:fixed;top:64px;right:10px;width:320px;max-width:calc(100vw - 20px);max-height:calc(100vh - 145px);background:rgba(9,16,29,0.96);border:1px solid #334155;border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,0.6);z-index:1600;flex-direction:column;overflow:hidden;color:#f8fafc;font-family:system-ui,sans-serif;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#1e293b;border-bottom:1px solid #334155;">
+        <div style="font-weight:700;font-size:14px;">📂 Pasta de Eventos (<span id="pastaEventosContador">0</span>)</div>
+        <button type="button" onclick="alternarPastaEventos(false)" style="padding:4px 8px;border:1px solid #475569;border-radius:6px;background:#0f172a;color:#e2e8f0;font-size:12px;font-weight:700;cursor:pointer;">✖ Fechar</button>
+      </div>
+      <div style="padding:10px 12px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid #334155;">
+        <div style="font-size:12px;font-weight:600;color:#cbd5e1;">Tipo de Marca:</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+          <button type="button" class="btn-tipo-marca" data-tipo="geral" onclick="selecionarTipoMarcaEvento('geral')" style="padding:7px 8px;border:1px solid #93c5fd;border-radius:8px;background:#2563eb;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">📍 Marca Atual</button>
+          <button type="button" class="btn-tipo-marca" data-tipo="rocha" onclick="selecionarTipoMarcaEvento('rocha')" style="padding:7px 8px;border:1px solid #334155;border-radius:8px;background:#1e293b;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">🪨 Rocha</button>
+          <button type="button" class="btn-tipo-marca" data-tipo="lula" onclick="selecionarTipoMarcaEvento('lula')" style="padding:7px 8px;border:1px solid #334155;border-radius:8px;background:#1e293b;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">🦑 Lula</button>
+          <button type="button" class="btn-tipo-marca" data-tipo="peguilho" onclick="selecionarTipoMarcaEvento('peguilho')" style="padding:7px 8px;border:1px solid #334155;border-radius:8px;background:#1e293b;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">🪝 Peguilho</button>
+        </div>
+        <input type="text" id="pastaEventoNome" placeholder="Nome do ponto (opcional)..." style="width:100%;box-sizing:border-box;padding:7px 10px;border-radius:8px;border:1px solid #475569;background:#0f172a;color:#f8fafc;font-size:13px;">
+        <div style="display:flex;gap:6px;">
+          <button type="button" onclick="marcarEventoAtual()" style="flex:1;padding:8px;border:none;border-radius:8px;background:#0284c7;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">📍 Marcar Aqui</button>
+          <button type="button" id="btnModoCliqueEvento" onclick="alternarModoCliqueEvento()" style="flex:1;padding:8px;border:1px solid #475569;border-radius:8px;background:#1e293b;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">🗺️ Clicar na Carta</button>
+        </div>
+      </div>
+      <div id="pastaEventosLista" style="padding:10px 12px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;flex:1;"></div>
+    </aside>
+
     <!-- NOTIFICAÇÃO TOAST -->
     <div id="toastNotificacao" class="toast">Mensagem</div>
   </div>
@@ -250,5 +276,6 @@
   <script src="static/vendor/leaflet.markercluster.js"></script>
   <script src="static/vendor/togeojson.umd.js"></script>
   <script src="static/gps.js"></script>
+  <script src="static/pasta_eventos.js"></script>
 </body>
 </html>

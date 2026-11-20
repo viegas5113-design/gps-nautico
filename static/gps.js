@@ -65,6 +65,7 @@
       attributionControl: false,
       maxZoom: 19
     }).setView(COORD_PADRAO, 13);
+    window.mapaGpsNautico = estado.mapa;
 
     // Controlo de Zoom em posição ergonómica para toque
     L.control.zoom({ position: 'bottomright' }).addTo(estado.mapa);
