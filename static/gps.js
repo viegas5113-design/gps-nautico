@@ -721,6 +721,7 @@
         const desc = obterTextoTag(el, 'desc') || '';
         const ele = parseFloat(obterTextoTag(el, 'ele')) || null;
         const sym = obterTextoTag(el, 'sym') || 'Waypoint';
+        const tipoTag = obterTextoTag(el, 'type') || '';
 
         novosWaypoints.push({
           id: `wpt_${Date.now()}_${i}`,
@@ -730,6 +731,7 @@
           ele,
           desc,
           sym,
+          tipo: tipoTag,
           origem: nomeFicheiro
         });
       }
@@ -789,6 +791,10 @@
       estado.waypoints = estado.waypoints.concat(novosWaypoints);
       atualizarContadorWaypoints();
       atualizarListaWaypointsGaveta();
+
+      if (typeof window.integrarGpxNaPastaEventos === 'function') {
+        window.integrarGpxNaPastaEventos(novosWaypoints, nomeFicheiro);
+      }
 
       // Ajustar visualização do mapa para englobar os pontos importados
       if (novosWaypoints.length > 0) {

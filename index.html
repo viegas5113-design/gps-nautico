@@ -250,6 +250,10 @@
         <div style="font-weight:700;font-size:14px;">📂 Pasta de Eventos (<span id="pastaEventosContador">0</span>)</div>
         <button type="button" onclick="alternarPastaEventos(false)" style="padding:4px 8px;border:1px solid #475569;border-radius:6px;background:#0f172a;color:#e2e8f0;font-size:12px;font-weight:700;cursor:pointer;">✖ Fechar</button>
       </div>
+      <div style="padding:8px 12px;background:#0f172a;border-bottom:1px solid #334155;display:flex;flex-direction:column;gap:6px;">
+        <div id="pastaEventosFicheiroAtivo" style="font-size:11.5px;color:#93c5fd;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">📄 Ficheiro: pesqueiros.gpx</div>
+        <button type="button" id="btnGuardarGpxAtualizado" onclick="guardarGpxAtualizado()" style="width:100%;padding:8px 10px;border:1px solid #34d399;border-radius:8px;background:#065f46;color:#ecfdf5;font-size:12.5px;font-weight:700;cursor:pointer;">💾 Guardar GPX Atualizado</button>
+      </div>
       <div style="padding:10px 12px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid #334155;">
         <div style="font-size:12px;font-weight:600;color:#cbd5e1;">Tipo de Marca:</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">

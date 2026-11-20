@@ -2,6 +2,8 @@
   'use strict';
 
   const STORAGE_KEY = 'gps_nautico_pasta_eventos_v1';
+  const FILE_KEY = 'gps_nautico_ficheiro_ativo_v1';
+  const DEFAULT_GPX_NAME = 'pesqueiros.gpx';
 
   const TIPOS_MARCA = {
     geral: {
@@ -35,6 +37,8 @@
   };
 
   let eventos = [];
+  let ficheiroAtivo = DEFAULT_GPX_NAME;
+  let fileHandle = null;
   let tipoSelecionado = 'geral';
   let painelAberto = false;
   let modoCliqueMapa = false;
@@ -56,20 +60,48 @@
       .replace(/'/g, '&#39;');
   }
 
+  function escaparXml(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
+  }
+
+  function normalizarTipoCategoria(tipoBruto, symBruto, descBruto) {
+    const texto = `${tipoBruto || ''} ${symBruto || ''} ${descBruto || ''}`.toLowerCase();
+    if (texto.includes('rocha') || texto.includes('pedra')) return 'rocha';
+    if (texto.includes('lula') || texto.includes('choco')) return 'lula';
+    if (texto.includes('peguilho') || texto.includes('preso') || texto.includes('enrosco')) return 'peguilho';
+    return 'geral';
+  }
+
   function guardarLocal() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(eventos));
+      localStorage.setItem(FILE_KEY, ficheiroAtivo || DEFAULT_GPX_NAME);
     } catch (_) {}
   }
 
   function carregarLocal() {
     try {
+      const f = localStorage.getItem(FILE_KEY);
+      if (f && f.trim()) ficheiroAtivo = f.trim();
       const bruto = localStorage.getItem(STORAGE_KEY);
       if (!bruto) return [];
       const dados = JSON.parse(bruto);
       return Array.isArray(dados) ? dados : [];
     } catch (_) {
       return [];
+    }
+  }
+
+  function atualizarRotuloFicheiro() {
+    const el = document.getElementById('pastaEventosFicheiroAtivo');
+    if (el) {
+      el.textContent = `📄 Ficheiro: ${ficheiroAtivo || DEFAULT_GPX_NAME}`;
+      el.title = ficheiroAtivo || DEFAULT_GPX_NAME;
     }
   }
 
@@ -123,6 +155,7 @@
     const listaEl = document.getElementById('pastaEventosLista');
     const contadorEl = document.getElementById('pastaEventosContador');
     if (contadorEl) contadorEl.textContent = String(eventos.length);
+    atualizarRotuloFicheiro();
     if (!listaEl) return;
 
     if (eventos.length === 0) {
@@ -182,6 +215,7 @@
       lat: Number(lat.toFixed(6)),
       lon: Number(lon.toFixed(6)),
       criado_em: new Date().toISOString().slice(0, 19).replace('T', ' '),
+      origem: ficheiroAtivo || DEFAULT_GPX_NAME,
     };
 
     eventos.unshift(novo);
@@ -189,6 +223,110 @@
     renderizarTudo();
     if (inputNome) inputNome.value = '';
   }
+
+  function gerarConteudoGpx() {
+    const linhas = [
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      '<gpx version="1.1" creator="GPS Nautico - Pasta de Eventos" xmlns="http://www.topografix.com/GPX/1/1">',
+    ];
+
+    for (const ev of eventos) {
+      const lat = Number(ev.lat);
+      const lon = Number(ev.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+      const info = TIPOS_MARCA[ev.tipo] || TIPOS_MARCA.geral;
+      linhas.push(`  <wpt lat="${lat.toFixed(6)}" lon="${lon.toFixed(6)}">`);
+      linhas.push(`    <name>${escaparXml(ev.nome)}</name>`);
+      linhas.push(`    <type>${escaparXml(info.chave)}</type>`);
+      linhas.push(`    <sym>${escaparXml(info.nome)}</sym>`);
+      linhas.push(`    <desc>${escaparXml(info.nome)}</desc>`);
+      linhas.push('  </wpt>');
+    }
+
+    linhas.push('</gpx>');
+    return linhas.join('\n') + '\n';
+  }
+
+  window.integrarGpxNaPastaEventos = function integrarGpxNaPastaEventos(waypoints, nomeFicheiro) {
+    if (nomeFicheiro && String(nomeFicheiro).trim()) {
+      const limpo = String(nomeFicheiro).trim();
+      ficheiroAtivo = limpo.toLowerCase().endsWith('.gpx') ? limpo : `${limpo}.gpx`;
+      fileHandle = null;
+    }
+
+    if (Array.isArray(waypoints) && waypoints.length > 0) {
+      const chavesExistentes = new Set(
+        eventos.map((e) => `${String(e.nome || '').trim().toLowerCase()}|${Number(e.lat).toFixed(5)}|${Number(e.lon).toFixed(5)}`)
+      );
+
+      for (let i = waypoints.length - 1; i >= 0; i--) {
+        const w = waypoints[i];
+        const lat = Number(w.lat);
+        const lon = Number(w.lon);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+        const nome = String(w.nome || 'Ponto GPX').trim();
+        const chave = `${nome.toLowerCase()}|${lat.toFixed(5)}|${lon.toFixed(5)}`;
+        if (chavesExistentes.has(chave)) continue;
+        chavesExistentes.add(chave);
+
+        eventos.push({
+          id: w.id || `gpx-${Date.now()}-${i}`,
+          nome,
+          tipo: normalizarTipoCategoria(w.tipo, w.sym, w.desc),
+          lat: Number(lat.toFixed(6)),
+          lon: Number(lon.toFixed(6)),
+          criado_em: new Date().toISOString().slice(0, 19).replace('T', ' '),
+          origem: ficheiroAtivo,
+        });
+      }
+    }
+
+    guardarLocal();
+    renderizarTudo();
+  };
+
+  window.guardarGpxAtualizado = async function guardarGpxAtualizado() {
+    const nomeDownload = ficheiroAtivo || DEFAULT_GPX_NAME;
+    const conteudoGpx = gerarConteudoGpx();
+
+    if (typeof window.showSaveFilePicker === 'function') {
+      try {
+        if (!fileHandle) {
+          fileHandle = await window.showSaveFilePicker({
+            suggestedName: nomeDownload,
+            types: [
+              {
+                description: 'Ficheiro GPX Náutico',
+                accept: { 'application/gpx+xml': ['.gpx'] },
+              },
+            ],
+          });
+        }
+        const writable = await fileHandle.createWritable();
+        await writable.write(conteudoGpx);
+        await writable.close();
+        if (fileHandle.name) {
+          ficheiroAtivo = fileHandle.name;
+          guardarLocal();
+          atualizarRotuloFicheiro();
+        }
+        return;
+      } catch (err) {
+        if (err && err.name === 'AbortError') return;
+        fileHandle = null;
+      }
+    }
+
+    const blob = new Blob([conteudoGpx], { type: 'application/gpx+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nomeDownload;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  };
 
   window.alternarPastaEventos = function alternarPastaEventos(forcarEstado) {
     const painel = document.getElementById('pastaEventosPainel');
@@ -272,6 +410,7 @@
   function inicializar() {
     eventos = carregarLocal();
     window.selecionarTipoMarcaEvento('geral');
+    atualizarRotuloFicheiro();
     ligarAoMapaQuandoPronto();
   }
 
