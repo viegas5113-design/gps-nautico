@@ -296,6 +296,41 @@
     modal.style.display = 'flex';
   };
 
+  window.abrirOpcoesPontoPorWaypoint = function abrirOpcoesPontoPorWaypoint(wpt) {
+    if (!wpt) return;
+    const latNum = Number(wpt.lat);
+    const lonNum = Number(wpt.lon);
+    const nomeLow = String(wpt.nome || '').trim().toLowerCase();
+
+    let ev = eventos.find((e) => String(e.id) === String(wpt.id));
+    if (!ev && Number.isFinite(latNum) && Number.isFinite(lonNum)) {
+      ev = eventos.find(
+        (e) =>
+          Math.abs(Number(e.lat) - latNum) < 0.00002 &&
+          Math.abs(Number(e.lon) - lonNum) < 0.00002 &&
+          (!nomeLow || String(e.nome || '').trim().toLowerCase() === nomeLow)
+      );
+    }
+    if (!ev && Number.isFinite(latNum) && Number.isFinite(lonNum)) {
+      ev = {
+        id: wpt.id || `gpx-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        nome: String(wpt.nome || 'Ponto GPX').trim(),
+        tipo: normalizarTipoCategoria(wpt.tipo, wpt.sym, wpt.desc),
+        lat: Number(latNum.toFixed(6)),
+        lon: Number(lonNum.toFixed(6)),
+        nota: wpt.desc ? String(wpt.desc).trim() : '',
+        criado_em: new Date().toISOString().slice(0, 19).replace('T', ' '),
+        origem: ficheiroAtivo || DEFAULT_GPX_NAME,
+      };
+      eventos.push(ev);
+      guardarLocal();
+      renderizarTudo();
+    }
+    if (ev) {
+      window.abrirOpcoesPonto(ev.id);
+    }
+  };
+
   window.fecharOpcoesPonto = function fecharOpcoesPonto() {
     pontoOpcoesAtivoId = null;
     const modal = document.getElementById('opcoesPontoModal');
@@ -310,6 +345,7 @@
 
     const inpNome = document.getElementById('opcoesPontoNome');
     const inpNota = document.getElementById('opcoesPontoNota');
+    const nomeAntigo = ev.nome;
     const novoNome = inpNome ? inpNome.value.trim() : '';
     const novaNota = inpNota ? inpNota.value.trim() : '';
     const info = TIPOS_MARCA[tipoOpcoesSelecionado] || TIPOS_MARCA.geral;
@@ -322,6 +358,9 @@
 
     guardarLocal();
     renderizarTudo();
+    if (typeof window.atualizarWaypointPorCoordenadas === 'function') {
+      window.atualizarWaypointPorCoordenadas(ev.id, ev.lat, ev.lon, nomeAntigo, ev.nome, ev.nota);
+    }
     window.fecharOpcoesPonto();
     notificarPonto(`💾 Ponto atualizado: ${ev.nome}`);
   };

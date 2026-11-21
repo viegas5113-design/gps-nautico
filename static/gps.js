@@ -850,25 +850,13 @@
         });
       }
       const marcador = L.marker([wpt.lat, wpt.lon], { icon: icone });
-      
-      const popupConteudo = `
-        <div style="font-family:sans-serif;font-size:12px;min-width:180px;line-height:1.4;">
-          <b style="color:#0284c7;font-size:14px;">📍 ${escaparHtml(wpt.nome)}</b><br>
-          <span style="color:#64748b;font-size:11px;">${formatarCoordenadaNautica(wpt.lat, wpt.lon)}</span>
-          ${wpt.ele ? `<br>Prof/Alt: <b>${wpt.ele.toFixed(1)}m</b>` : ''}
-          ${wpt.desc ? `<p style="margin:4px 0;color:#334155;font-size:11.5px;">${escaparHtml(wpt.desc)}</p>` : ''}
-          <div style="margin-top:8px;display:flex;gap:4px;">
-            <button onclick="window.iniciarNavegacaoPara('${wpt.id}')" style="flex:1;background:#0284c7;color:white;border:none;padding:6px;border-radius:6px;font-weight:bold;cursor:pointer;">
-              🧭 Navegar Para
-            </button>
-            <button onclick="window.apagarWaypoint('${wpt.id}')" style="background:#dc2626;color:white;border:none;padding:6px 10px;border-radius:6px;font-weight:bold;cursor:pointer;">
-              🗑️ Apagar
-            </button>
-          </div>
-        </div>
-      `;
 
-      marcador.bindPopup(popupConteudo);
+      marcador.on('click', () => {
+        if (typeof window.abrirOpcoesPontoPorWaypoint === 'function') {
+          window.abrirOpcoesPontoPorWaypoint(wpt);
+        }
+      });
+
       wpt.camada = marcador;
       estado.camadaWaypoints.addLayer(marcador);
     });
@@ -1191,6 +1179,37 @@
     }
   };
 
+  window.abrirOpcoesPontoPorWaypointId = function(wptId) {
+    const wpt = estado.waypoints.find(w => String(w.id) === String(wptId));
+    if (wpt && typeof window.abrirOpcoesPontoPorWaypoint === 'function') {
+      window.abrirOpcoesPontoPorWaypoint(wpt);
+    }
+  };
+
+  window.atualizarWaypointPorCoordenadas = function(id, lat, lon, nomeAntigo, nomeNovo, notaNova) {
+    const latNum = Number(lat);
+    const lonNum = Number(lon);
+    const nomeLow = String(nomeAntigo || '').trim().toLowerCase();
+    let alterou = false;
+
+    estado.waypoints.forEach(w => {
+      const mesmoId = id && String(w.id) === String(id);
+      const mesmaCoord = Number.isFinite(latNum) && Number.isFinite(lonNum)
+        && Math.abs(Number(w.lat) - latNum) < 0.00002
+        && Math.abs(Number(w.lon) - lonNum) < 0.00002
+        && (!nomeLow || String(w.nome || '').trim().toLowerCase() === nomeLow);
+      if (mesmoId || mesmaCoord) {
+        if (nomeNovo) w.nome = nomeNovo;
+        if (notaNova !== undefined) w.desc = notaNova;
+        alterou = true;
+      }
+    });
+
+    if (alterou) {
+      atualizarListaWaypointsGaveta();
+    }
+  };
+
   // ==========================================
   // GESTÃO DA GAVETA E LISTA DE WAYPOINTS
   // ==========================================
@@ -1272,8 +1291,8 @@
             <button class="btn-wpt btn-wpt-ver" onclick="window.centrarNoWaypoint('${w.id}')">
               👁️ Ver no Mapa
             </button>
-            <button class="btn-wpt" style="background:#991b1b;color:#fff;flex:0 0 auto;padding:7px 10px;" onclick="window.apagarWaypoint('${w.id}')" title="Apagar marca">
-              🗑️
+            <button class="btn-wpt" style="background:#1e293b;color:#f8fafc;border:1px solid #475569;flex:0 0 auto;padding:7px 10px;" onclick="window.abrirOpcoesPontoPorWaypointId('${w.id}')" title="Opções do ponto">
+              ⚙️
             </button>
           </div>
         </div>
