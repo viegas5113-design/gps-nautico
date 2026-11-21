@@ -861,6 +861,9 @@
             <button onclick="window.iniciarNavegacaoPara('${wpt.id}')" style="flex:1;background:#0284c7;color:white;border:none;padding:6px;border-radius:6px;font-weight:bold;cursor:pointer;">
               🧭 Navegar Para
             </button>
+            <button onclick="window.apagarWaypoint('${wpt.id}')" style="background:#dc2626;color:white;border:none;padding:6px 10px;border-radius:6px;font-weight:bold;cursor:pointer;">
+              🗑️ Apagar
+            </button>
           </div>
         </div>
       `;
@@ -1092,12 +1095,21 @@
   // MARCAÇÃO RÁPIDA DE PONTO (MOB)
   // ==========================================
   function marcarPontoRapidoMob() {
-    if (!estado.posicao) {
+    let lat, lon, origemTxt;
+    if (estado.posicao) {
+      lat = estado.posicao.lat;
+      lon = estado.posicao.lon;
+      origemTxt = `Marcado no telemóvel às ${new Date().toLocaleTimeString()}`;
+    } else if (estado.mapa) {
+      const c = estado.mapa.getCenter();
+      lat = c.lat;
+      lon = c.lng;
+      origemTxt = `Marcado no centro da carta às ${new Date().toLocaleTimeString()}`;
+    } else {
       mostrarNotificacao('A aguardar sinal GPS para marcar ponto...', 2500);
       return;
     }
 
-    const { lat, lon } = estado.posicao;
     const num = estado.waypoints.length + 1;
     const nomeSugerido = `MOB_${num}`;
 
@@ -1110,7 +1122,7 @@
       lat,
       lon,
       ele: null,
-      desc: `Marcado no telemóvel às ${new Date().toLocaleTimeString()}`,
+      desc: origemTxt,
       sym: 'MOB',
       origem: 'Manual'
     };
@@ -1120,8 +1132,64 @@
     atualizarContadorWaypoints();
     atualizarListaWaypointsGaveta();
 
+    if (typeof window.integrarGpxNaPastaEventos === 'function') {
+      window.integrarGpxNaPastaEventos([novoWpt]);
+    }
+
     mostrarNotificacao(`📍 Ponto marcado: ${novoWpt.nome}`, 2500);
   }
+
+  function removerWaypointInterno(wpt) {
+    if (!wpt) return;
+    if (wpt.camada && estado.camadaWaypoints) {
+      estado.camadaWaypoints.removeLayer(wpt.camada);
+    }
+    if (estado.waypointAtivo && estado.waypointAtivo.id === wpt.id) {
+      window.cancelarNavegacao();
+    }
+  }
+
+  window.apagarWaypoint = function(wptId, ignorarConfirmacao) {
+    const wpt = estado.waypoints.find(w => String(w.id) === String(wptId));
+    if (!wpt) return;
+    if (!ignorarConfirmacao && !confirm(`Queres mesmo apagar "${wpt.nome}"?`)) return;
+
+    removerWaypointInterno(wpt);
+    estado.waypoints = estado.waypoints.filter(w => String(w.id) !== String(wptId));
+    atualizarContadorWaypoints();
+    atualizarListaWaypointsGaveta();
+
+    if (typeof window.removerEventoPorCoordenadas === 'function') {
+      window.removerEventoPorCoordenadas(wpt.id, wpt.lat, wpt.lon, wpt.nome);
+    }
+    mostrarNotificacao(`🗑️ Marca apagada: ${wpt.nome}`, 2200);
+  };
+
+  window.removerWaypointPorCoordenadas = function(id, lat, lon, nome) {
+    const latNum = Number(lat);
+    const lonNum = Number(lon);
+    const nomeLow = String(nome || '').trim().toLowerCase();
+    let alterou = false;
+
+    estado.waypoints = estado.waypoints.filter(w => {
+      const mesmoId = id && String(w.id) === String(id);
+      const mesmaCoord = Number.isFinite(latNum) && Number.isFinite(lonNum)
+        && Math.abs(Number(w.lat) - latNum) < 0.00002
+        && Math.abs(Number(w.lon) - lonNum) < 0.00002
+        && (!nomeLow || String(w.nome || '').trim().toLowerCase() === nomeLow);
+      if (mesmoId || mesmaCoord) {
+        removerWaypointInterno(w);
+        alterou = true;
+        return false;
+      }
+      return true;
+    });
+
+    if (alterou) {
+      atualizarContadorWaypoints();
+      atualizarListaWaypointsGaveta();
+    }
+  };
 
   // ==========================================
   // GESTÃO DA GAVETA E LISTA DE WAYPOINTS
@@ -1204,6 +1272,9 @@
             <button class="btn-wpt btn-wpt-ver" onclick="window.centrarNoWaypoint('${w.id}')">
               👁️ Ver no Mapa
             </button>
+            <button class="btn-wpt" style="background:#991b1b;color:#fff;flex:0 0 auto;padding:7px 10px;" onclick="window.apagarWaypoint('${w.id}')" title="Apagar marca">
+              🗑️
+            </button>
           </div>
         </div>
       `;
@@ -1237,10 +1308,11 @@
       let html = '';
       ficheiros.forEach(f => {
         const nome = f.nome || f.ficheiro || '';
+        const ficheiro = f.ficheiro || f.nome || '';
         const tam = f.tamanho_kb || 0;
         const desc = f.descricao || 'Formato GPX Náutico';
         html += `
-          <div class="pesqueiro-item" onclick="window.carregarPesqueiroServidor('${escaparHtml(nome)}')">
+          <div class="pesqueiro-item" onclick="window.carregarPesqueiroServidor('${escaparHtml(ficheiro)}')">
             <div>
               <div class="pesqueiro-nome">🐟 ${escaparHtml(nome)}</div>
               <div class="pesqueiro-sub">${tam} KB • ${escaparHtml(desc)}</div>

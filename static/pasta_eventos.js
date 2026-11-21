@@ -43,6 +43,7 @@
   let painelAberto = false;
   let modoCliqueMapa = false;
   let camadaEventos = null;
+  let limiteVisivel = 80;
 
   function obterMapa() {
     if (window.mapaGpsNautico && typeof window.mapaGpsNautico.on === 'function') {
@@ -173,7 +174,10 @@
       return;
     }
 
-    listaEl.innerHTML = eventos
+    const visiveis = eventos.slice(0, limiteVisivel);
+    const restante = eventos.length - visiveis.length;
+
+    listaEl.innerHTML = visiveis
       .map((ev) => {
         const info = TIPOS_MARCA[ev.tipo] || TIPOS_MARCA.geral;
         const lat = Number(ev.lat).toFixed(5);
@@ -199,8 +203,15 @@
           </div>
         `;
       })
-      .join('');
+      .join('') + (restante > 0
+        ? `<button type="button" onclick="window.mostrarMaisEventosGpsNautico()" style="padding:8px;border:1px solid #334155;border-radius:8px;background:#1e293b;color:#93c5fd;font-size:12px;font-weight:700;cursor:pointer;">Mostrar mais (${restante} restantes)</button>`
+        : '');
   }
+
+  window.mostrarMaisEventosGpsNautico = function mostrarMaisEventosGpsNautico() {
+    limiteVisivel += 100;
+    renderizarLista();
+  };
 
   function renderizarTudo() {
     renderizarMapa();
@@ -462,6 +473,27 @@
     }
   };
 
+  window.removerEventoPorCoordenadas = function removerEventoPorCoordenadas(id, lat, lon, nome) {
+    const latNum = Number(lat);
+    const lonNum = Number(lon);
+    const nomeLow = String(nome || '').trim().toLowerCase();
+    const antes = eventos.length;
+
+    eventos = eventos.filter((e) => {
+      const mesmoId = id && String(e.id) === String(id);
+      const mesmaCoord = Number.isFinite(latNum) && Number.isFinite(lonNum)
+        && Math.abs(Number(e.lat) - latNum) < 0.00002
+        && Math.abs(Number(e.lon) - lonNum) < 0.00002
+        && (!nomeLow || String(e.nome || '').trim().toLowerCase() === nomeLow);
+      return !(mesmoId || mesmaCoord);
+    });
+
+    if (eventos.length !== antes) {
+      guardarLocal();
+      renderizarTudo();
+    }
+  };
+
   window.apagarEventoGpsNautico = function apagarEventoGpsNautico(id) {
     const ev = eventos.find((e) => String(e.id) === String(id));
     const nome = ev ? ev.nome : 'esta marca';
@@ -470,6 +502,10 @@
     eventos = eventos.filter((e) => String(e.id) !== String(id));
     guardarLocal();
     renderizarTudo();
+
+    if (ev && typeof window.removerWaypointPorCoordenadas === 'function') {
+      window.removerWaypointPorCoordenadas(ev.id, ev.lat, ev.lon, ev.nome);
+    }
   };
 
   function ligarAoMapaQuandoPronto(tentativas = 0) {

@@ -1,7 +1,7 @@
 // Service Worker Offline-First para o GPS Náutico Independente
 // Funciona 100% no telemóvel mesmo com o computador desligado e sem internet no mar.
 
-const CACHE_NAME = 'gps-nautico-offline-v9';
+const CACHE_NAME = 'gps-nautico-offline-v10';
 const TILE_CACHE_NAME = 'gps-nautico-tiles-v1';
 
 const RECURSOS_ESSENCIAIS = [
@@ -81,23 +81,53 @@ self.addEventListener('fetch', (evento) => {
     return;
   }
 
-  // 2. Navegação Principal (quando o utilizador abre ou atualiza a app no telemóvel)
+  // 2. Navegação Principal (Network-First quando há rede, Cache-First offline no mar)
   if (evento.request.mode === 'navigate') {
     evento.respondWith(
-      caches.match(new URL('./', self.registration.scope).href)
-        .then((cached) => cached || caches.match(new URL('./index.html', self.registration.scope).href))
-        .then((cached) => {
-          if (cached) return cached;
-          return fetch(evento.request).catch(() => {
-            return caches.match(new URL('./', self.registration.scope).href) ||
-                   caches.match(new URL('./index.html', self.registration.scope).href);
-          });
+      fetch(evento.request)
+        .then((respRede) => {
+          if (respRede && respRede.status === 200) {
+            const clone = respRede.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(new URL('./', self.registration.scope).href, clone.clone());
+              cache.put(new URL('./index.html', self.registration.scope).href, clone);
+            });
+          }
+          return respRede;
+        })
+        .catch(() => {
+          return caches.match(new URL('./', self.registration.scope).href)
+            .then((cached) => cached || caches.match(new URL('./index.html', self.registration.scope).href));
         })
     );
     return;
   }
 
-  // 3. Recursos Locais (Cache-First para velocidade instantânea offline sem net)
+  // 3. Recursos Locais (Network-First para código da app; Cache-First offline no mar)
+  const ehCodigoApp = url.origin === self.location.origin && (
+    url.pathname.endsWith('.html') ||
+    url.pathname.endsWith('.css') ||
+    url.pathname.endsWith('/gps.js') ||
+    url.pathname.endsWith('/pasta_eventos.js') ||
+    url.pathname.endsWith('/aorus.js') ||
+    url.pathname.endsWith('/manifest.json')
+  );
+
+  if (ehCodigoApp) {
+    evento.respondWith(
+      fetch(evento.request)
+        .then((respostaRede) => {
+          if (respostaRede && respostaRede.status === 200 && evento.request.method === 'GET') {
+            const clone = respostaRede.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(evento.request, clone));
+          }
+          return respostaRede;
+        })
+        .catch(() => caches.match(evento.request))
+    );
+    return;
+  }
+
   evento.respondWith(
     caches.match(evento.request).then((respostaCache) => {
       if (respostaCache) {
