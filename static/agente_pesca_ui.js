@@ -6,7 +6,7 @@
  */
 (() => {
   const CHAVE_URL_VIGILANTE = 'gps_nautico_vigilante_url';
-  const URL_PADRAO = 'http://127.0.0.1:8765/api/chat';
+  const URL_PADRAO = 'http://192.168.1.195:8765';
 
   function escaparHtml(str) {
     return String(str || '')
@@ -34,6 +34,11 @@
     } catch (_) {
       return URL_PADRAO;
     }
+  }
+
+  function obterEndpointChat() {
+    const base = obterUrlVigilante().replace(/\/+$/, '');
+    return base.endsWith('/api/chat') ? base : `${base}/api/chat`;
   }
 
   function guardarUrlVigilante(novaUrl) {
@@ -264,7 +269,7 @@
 
     const ctx = obterContextoAtual();
     const registos = obterTodosRegistos();
-    const url = obterUrlVigilante();
+    const url = obterEndpointChat();
     const promptCompleto = formatarPromptCompleto(pergunta, ctx);
 
     // Nível 1: Tentar VigilanteAI local/LAN

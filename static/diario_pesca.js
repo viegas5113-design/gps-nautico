@@ -15,8 +15,8 @@
   let ultimoAvisoPorLocal = {}; // { chaveLocal: timestamp }
   let ultimaChaveProximidadeAtiva = null;
 
-  const ESPECIES_RAPIDAS = ['Lula', 'Choco', 'Pargo', 'Safia', 'Robalo', 'Outros'];
-  const ARTES_RAPIDAS = ['Toneiras/Palhaços', 'Rede de Emalhar', 'Cana/Chumbadinha', 'Palangre'];
+  const ESPECIES_RAPIDAS = ['Lula', 'Choco', 'Pargo', 'Safia', 'Robalo', 'Polvo', 'Outros'];
+  const ARTES_RAPIDAS = ['Toneiras/Palhaços', 'Rede de Emalhar', 'Cana/Chumbadinha', 'Palangre', 'Covos'];
   const MARES_RAPIDAS = ['Enchente', 'Vazante', 'Estofo'];
   const ESTADOS_MAR = ['Chão', 'Marezia', 'Picado', 'Vaga'];
 
@@ -313,6 +313,8 @@
     document.getElementById('diarioInpMare').value = registoExistente?.mare || 'Enchente';
     document.getElementById('diarioInpVento').value = registoExistente?.vento || '';
     document.getElementById('diarioInpMar').value = registoExistente?.estadoMar || 'Chão';
+    document.getElementById('diarioInpProf').value = registoExistente?.profundidade || '';
+    document.getElementById('diarioInpTempAgua').value = registoExistente?.tempAgua || '';
     document.getElementById('diarioInpQualidade').value = registoExistente?.qualidade || 'boa';
     document.getElementById('diarioInpLembrete').value = registoExistente?.lembrete || '';
     document.getElementById('diarioInpLembreteData').value = registoExistente?.lembreteData || '';
@@ -355,6 +357,8 @@
     const mare = document.getElementById('diarioInpMare').value.trim();
     const vento = document.getElementById('diarioInpVento').value.trim();
     const estadoMar = document.getElementById('diarioInpMar').value.trim();
+    const profundidade = document.getElementById('diarioInpProf').value.trim();
+    const tempAgua = document.getElementById('diarioInpTempAgua').value.trim();
     const qualidade = document.getElementById('diarioInpQualidade').value || 'normal';
     const lembrete = document.getElementById('diarioInpLembrete').value.trim();
     const lembreteData = document.getElementById('diarioInpLembreteData').value || '';
@@ -375,6 +379,8 @@
       mare,
       vento,
       estadoMar,
+      profundidade,
+      tempAgua,
       qualidade,
       lembrete,
       lembreteData,
@@ -440,6 +446,8 @@
               ${r.mare ? `<span>🌊 ${escaparHtml(r.mare)}</span>` : ''}
               ${r.vento ? `<span>💨 ${escaparHtml(r.vento)}</span>` : ''}
               ${r.estadoMar ? `<span>⛵ ${escaparHtml(r.estadoMar)}</span>` : ''}
+              ${r.profundidade ? `<span>📏 ${escaparHtml(r.profundidade)}</span>` : ''}
+              ${r.tempAgua ? `<span>🌡️ ${escaparHtml(r.tempAgua)}</span>` : ''}
             </div>
             ${
               r.lembrete || r.lembreteData
@@ -579,6 +587,8 @@
       'Mare',
       'Vento',
       'Estado do Mar',
+      'Profundidade',
+      'Temp. Agua',
       'Qualidade',
       'Lembrete Futuro',
       'Data Lembrete'
@@ -599,6 +609,8 @@
           r.mare,
           r.vento,
           r.estadoMar,
+          r.profundidade,
+          r.tempAgua,
           r.qualidade,
           r.lembrete,
           r.lembreteData
@@ -765,6 +777,17 @@
             </div>
           </div>
 
+          <div class="diario-form-grid2">
+            <div>
+              <label>Profundidade (Sonda)</label>
+              <input type="text" id="diarioInpProf" placeholder="Ex: 18 braças / 32m">
+            </div>
+            <div>
+              <label>Temp. da Água</label>
+              <input type="text" id="diarioInpTempAgua" placeholder="Ex: 18.5 °C">
+            </div>
+          </div>
+
           <div class="diario-lembrete-box">
             <label>🔮 Lembrete / Memória Futura</label>
             <input type="text" id="diarioInpLembrete" placeholder="Ex: Voltar na próxima lua cheia, testar ao lusco-fusco">
@@ -922,6 +945,8 @@
         mare: r.mare,
         vento: r.vento,
         estadoMar: r.estadoMar,
+        profundidade: r.profundidade,
+        tempAgua: r.tempAgua,
         qualidade: r.qualidade,
         lembrete: r.lembrete,
         lembreteData: r.lembreteData
