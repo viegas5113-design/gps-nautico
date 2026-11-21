@@ -1248,3 +1248,554 @@ html, body {
 .aorus-quick-grid button:active {
   background: #1d4ed8;
 }
+
+/* ==========================================
+   BOTÕES TOPO (DIÁRIO & AGENTE IA PESCA)
+   ========================================== */
+.btn-top-pill {
+  border-radius: 8px;
+  padding: 6px 9px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  color: #fff;
+}
+.btn-top-diario {
+  background: #0f766e;
+  border: 1px solid #2dd4bf;
+}
+.btn-top-ia {
+  background: #4338ca;
+  border: 1px solid #818cf8;
+}
+
+/* ==========================================
+   PAINÉIS RECOLHÍVEIS: DIÁRIO & AGENTE IA
+   ========================================== */
+.diario-pesca-painel,
+.agente-pesca-painel {
+  position: fixed;
+  top: 64px;
+  right: 10px;
+  width: 370px;
+  max-width: calc(100vw - 20px);
+  max-height: calc(100vh - 135px);
+  background: rgba(9, 16, 29, 0.98);
+  border: 1px solid #334155;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7);
+  z-index: 1650;
+  flex-direction: column;
+  overflow: hidden;
+  color: #f8fafc;
+  font-family: system-ui, sans-serif;
+}
+
+.diario-header,
+.agente-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
+  flex-shrink: 0;
+}
+
+.diario-header-titulo,
+.agente-header-titulo {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.diario-btn-ia {
+  padding: 4px 8px;
+  border: 1px solid #818cf8;
+  border-radius: 6px;
+  background: #312e81;
+  color: #e0e7ff;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.diario-btn-fechar {
+  padding: 4px 8px;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.diario-body,
+.agente-body {
+  padding: 10px 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+/* Memória Futura */
+.diario-memoria-box {
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid #1e3a8a;
+  border-radius: 10px;
+  padding: 9px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.diario-sec-titulo {
+  font-size: 12px;
+  font-weight: 800;
+  color: #7dd3fc;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.diario-memoria-lua {
+  font-size: 12px;
+  color: #fde047;
+}
+
+.diario-memoria-vazia {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11.5px;
+}
+
+.diario-memoria-sub {
+  font-size: 11px;
+  font-weight: 700;
+  color: #93c5fd;
+  margin-top: 2px;
+}
+
+.diario-memoria-item {
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 11.5px;
+}
+
+.diario-memoria-item.lembrete {
+  border-color: #f59e0b;
+  background: rgba(120, 53, 15, 0.25);
+}
+
+.diario-memoria-topo {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.diario-badge-quando {
+  background: #b45309;
+  color: #fef3c7;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.diario-badge-motivo {
+  background: #0369a1;
+  color: #e0f2fe;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.diario-memoria-txt {
+  color: #cbd5e1;
+  margin-top: 2px;
+}
+
+/* Ações e Formulário */
+.diario-acoes-topo {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.diario-btn-primario {
+  padding: 8px 10px;
+  border: 1px solid #34d399;
+  border-radius: 8px;
+  background: #065f46;
+  color: #ecfdf5;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.diario-input-pesquisa {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 9px;
+  border-radius: 8px;
+  border: 1px solid #475569;
+  background: #0f172a;
+  color: #f8fafc;
+  font-size: 12px;
+}
+
+.diario-form {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.diario-form label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #93c5fd;
+  margin-bottom: 3px;
+}
+
+.diario-form input,
+.diario-form select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 8px;
+  border-radius: 7px;
+  border: 1px solid #475569;
+  background: #1e293b;
+  color: #f8fafc;
+  font-size: 12.5px;
+}
+
+.diario-form-grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.diario-form-grid3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+}
+
+.diario-lua-pill {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 7px;
+  padding: 5px 8px;
+  font-size: 12px;
+  color: #fde047;
+}
+
+.diario-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.diario-chip {
+  padding: 6px 9px;
+  border-radius: 8px;
+  border: 1px solid #475569;
+  background: #1e293b;
+  color: #e2e8f0;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.diario-chip.ativo {
+  background: #0284c7;
+  border-color: #38bdf8;
+  color: #fff;
+}
+
+.diario-lembrete-box {
+  background: rgba(30, 58, 138, 0.25);
+  border: 1px solid #2563eb;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.diario-btn-guardar {
+  flex: 1;
+  padding: 9px;
+  border: none;
+  border-radius: 8px;
+  background: #0284c7;
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.diario-btn-sec {
+  padding: 9px 12px;
+  border: 1px solid #475569;
+  border-radius: 8px;
+  background: #1e293b;
+  color: #cbd5e1;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Lista de Registos */
+.diario-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.diario-card-reg {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 9px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.diario-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.diario-card-titulo {
+  font-weight: 700;
+  font-size: 13px;
+  color: #f8fafc;
+}
+
+.diario-card-sub {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.diario-card-badges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-size: 11px;
+  color: #fde047;
+  white-space: nowrap;
+}
+
+.diario-badge-qual {
+  color: #4ade80;
+  font-weight: 700;
+}
+
+.diario-card-detalhes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 11.5px;
+  color: #cbd5e1;
+}
+
+.diario-card-lembrete {
+  font-size: 11.5px;
+  color: #7dd3fc;
+  background: rgba(2, 132, 199, 0.15);
+  padding: 4px 7px;
+  border-radius: 6px;
+}
+
+.diario-card-acoes {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.diario-card-acoes button {
+  padding: 4px 8px;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.diario-card-acoes button.btn-apagar {
+  border-color: #991b1b;
+  color: #fca5a5;
+}
+
+.diario-footer {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #0f172a;
+  border-top: 1px solid #334155;
+  flex-shrink: 0;
+}
+
+.diario-footer button {
+  padding: 7px 4px;
+  border: 1px solid #334155;
+  border-radius: 7px;
+  background: #1e293b;
+  color: #e2e8f0;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Aviso Proximidade (< 250m) */
+.diario-aviso-proximidade {
+  position: fixed;
+  bottom: 78px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 360px;
+  max-width: calc(100vw - 24px);
+  background: rgba(15, 23, 42, 0.96);
+  border: 1px solid #f59e0b;
+  border-radius: 10px;
+  padding: 9px 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65);
+  z-index: 1550;
+}
+
+/* Agente IA de Pesca */
+.agente-rapidos {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.agente-btn-rapido {
+  text-align: left;
+  padding: 8px 10px;
+  border: 1px solid #4f46e5;
+  border-radius: 8px;
+  background: rgba(49, 46, 129, 0.45);
+  color: #e0e7ff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.agente-input-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.agente-input-wrap textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #475569;
+  background: #0f172a;
+  color: #f8fafc;
+  font-size: 12.5px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.agente-acoes-envio {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.agente-btn-enviar {
+  padding: 9px;
+  border: none;
+  border-radius: 8px;
+  background: #4f46e5;
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.agente-btn-copiar {
+  padding: 8px;
+  border: 1px solid #0284c7;
+  border-radius: 8px;
+  background: #0f172a;
+  color: #7dd3fc;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.agente-resp-wrap {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.agente-nivel-badge {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.agente-nivel-badge.nivel-1 {
+  background: #065f46;
+  color: #a7f3d0;
+}
+
+.agente-nivel-badge.nivel-2 {
+  background: #78350f;
+  color: #fde68a;
+}
+
+.agente-resposta {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: #e2e8f0;
+  word-break: break-word;
+}
+
+@media (max-width: 480px) {
+  .btn-top-pill {
+    padding: 5px 7px;
+    font-size: 11px;
+  }
+  .diario-pesca-painel,
+  .agente-pesca-painel {
+    top: calc(var(--safe-top) + 84px);
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-width: none;
+    max-height: calc(100vh - var(--safe-top) - var(--safe-bottom) - 156px);
+  }
+}

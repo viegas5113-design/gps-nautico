@@ -1,7 +1,7 @@
 // Service Worker Offline-First para o GPS Náutico Independente
 // Funciona 100% no telemóvel mesmo com o computador desligado e sem internet no mar.
 
-const CACHE_NAME = 'gps-nautico-offline-v10';
+const CACHE_NAME = 'gps-nautico-offline-v11';
 const TILE_CACHE_NAME = 'gps-nautico-tiles-v1';
 
 const RECURSOS_ESSENCIAIS = [
@@ -12,6 +12,8 @@ const RECURSOS_ESSENCIAIS = [
   './static/gps.js',
   './static/aorus.js',
   './static/pasta_eventos.js',
+  './static/diario_pesca.js',
+  './static/agente_pesca_ui.js',
   './static/avatar.jpg',
   './static/vendor/leaflet.css',
   './static/vendor/leaflet.js',
@@ -56,6 +58,7 @@ self.addEventListener('activate', (evento) => {
 });
 
 self.addEventListener('fetch', (evento) => {
+  if (evento.request.method !== 'GET') return;
   const url = new URL(evento.request.url);
 
   // 1. Intercetar azulejos de mapas online (OSM, OpenSeaMap, Satélite Esri, CartoDB) e guardar para offline no mar
@@ -110,6 +113,8 @@ self.addEventListener('fetch', (evento) => {
     url.pathname.endsWith('/gps.js') ||
     url.pathname.endsWith('/pasta_eventos.js') ||
     url.pathname.endsWith('/aorus.js') ||
+    url.pathname.endsWith('/diario_pesca.js') ||
+    url.pathname.endsWith('/agente_pesca_ui.js') ||
     url.pathname.endsWith('/manifest.json')
   );
 
