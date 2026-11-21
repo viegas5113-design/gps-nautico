@@ -94,6 +94,9 @@
     } catch (e) {
       notificar('⚠️ Erro ao guardar Diário no armazenamento local.');
     }
+    if (window.BackupNautico && typeof window.BackupNautico.agendarSilencioso === 'function') {
+      window.BackupNautico.agendarSilencioso();
+    }
   }
 
   function obterPosicaoGpsAtual() {
@@ -814,6 +817,10 @@
         <button type="button" id="btnImportarDiarioJson">📂 Importar</button>
         <input type="file" id="inpImportarDiarioJson" accept=".json" style="display:none;">
       </div>
+      <div class="diario-footer-pc">
+        <button type="button" id="btnBackupDiarioPc" class="btn-pc-save">☁️ Guardar Backup no PC</button>
+        <button type="button" id="btnRestaurarDiarioPc" class="btn-pc-restore">📥 Restaurar do PC</button>
+      </div>
     `;
 
     document.getElementById('app-container')?.appendChild(painel);
@@ -874,6 +881,12 @@
       const file = e.target.files?.[0];
       if (file) importarJson(file);
       e.target.value = '';
+    });
+    document.getElementById('btnBackupDiarioPc').addEventListener('click', () => {
+      if (window.BackupNautico) window.BackupNautico.guardarManual();
+    });
+    document.getElementById('btnRestaurarDiarioPc').addEventListener('click', () => {
+      if (window.BackupNautico) window.BackupNautico.restaurarManual();
     });
   }
 
@@ -965,6 +978,10 @@
 
   window.DiarioPesca = {
     alternarPainel,
+    recarregarLocal: () => {
+      carregarRegistos();
+      renderizarTudo();
+    },
     obterRegistos: () => registos.slice(),
     calcularFaseLua,
     calcularDistanciaMetros,

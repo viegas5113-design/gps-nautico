@@ -44,6 +44,7 @@
   let modoCliqueMapa = false;
   let camadaEventos = null;
   let limiteVisivel = 80;
+  let ultimoPontoGravadoId = null;
 
   function obterMapa() {
     if (window.mapaGpsNautico && typeof window.mapaGpsNautico.on === 'function') {
@@ -83,6 +84,9 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify(eventos));
       localStorage.setItem(FILE_KEY, ficheiroAtivo || DEFAULT_GPX_NAME);
     } catch (_) {}
+    if (window.BackupNautico && typeof window.BackupNautico.agendarSilencioso === 'function') {
+      window.BackupNautico.agendarSilencioso();
+    }
   }
 
   function carregarLocal() {
@@ -149,9 +153,6 @@
             <button type="button" onclick="window.navegarEventoGpsNautico('${escaparHtml(ev.id)}')" style="flex:1;padding:6px 8px;border:none;border-radius:6px;background:#0284c7;color:#fff;font-weight:700;cursor:pointer;font-size:12px;">
               🧭 Ir
             </button>
-            <button type="button" onclick="window.apagarEventoGpsNautico('${escaparHtml(ev.id)}')" style="flex:1;padding:6px 8px;border:none;border-radius:6px;background:#dc2626;color:#fff;font-weight:700;cursor:pointer;font-size:12px;">
-              🗑️ Apagar
-            </button>
           </div>
         </div>
       `;
@@ -196,9 +197,6 @@
               <button type="button" onclick="window.navegarEventoGpsNautico('${escaparHtml(ev.id)}')" style="padding:5px 8px;border:none;border-radius:6px;background:#0284c7;color:#fff;font-size:11px;font-weight:700;cursor:pointer;" title="Navegar para este ponto">
                 🧭 Ir
               </button>
-              <button type="button" onclick="window.apagarEventoGpsNautico('${escaparHtml(ev.id)}')" style="padding:5px 8px;border:none;border-radius:6px;background:#991b1b;color:#fff;font-size:11px;font-weight:700;cursor:pointer;" title="Apagar este ponto">
-                🗑️ Apagar
-              </button>
             </div>
           </div>
         `;
@@ -231,6 +229,48 @@
     return { lat: 37.101, lon: -8.674 };
   }
 
+  function mostrarAvisoPontoRecemGravado(ev) {
+    if (!ev) return;
+    ultimoPontoGravadoId = ev.id;
+    const banner = document.getElementById('pastaEventoRecemGravadoBanner');
+    const texto = document.getElementById('pastaEventoRecemGravadoTexto');
+    const info = TIPOS_MARCA[ev.tipo] || TIPOS_MARCA.geral;
+    if (texto) {
+      texto.textContent = `✅ Gravado: ${ev.simbolo || info.icone} ${ev.nome}`;
+      texto.title = ev.nome;
+    }
+    if (banner) {
+      banner.style.display = 'flex';
+    }
+  }
+
+  window.fecharAvisoPontoRecemGravado = function fecharAvisoPontoRecemGravado() {
+    ultimoPontoGravadoId = null;
+    const banner = document.getElementById('pastaEventoRecemGravadoBanner');
+    if (banner) {
+      banner.style.display = 'none';
+    }
+  };
+
+  window.apagarPontoRecemGravado = function apagarPontoRecemGravado() {
+    if (!ultimoPontoGravadoId) return;
+    const idAlvo = ultimoPontoGravadoId;
+    const ev = eventos.find((e) => String(e.id) === String(idAlvo));
+    eventos = eventos.filter((e) => String(e.id) !== String(idAlvo));
+    window.fecharAvisoPontoRecemGravado();
+    guardarLocal();
+    renderizarTudo();
+    if (ev && typeof window.removerWaypointPorCoordenadas === 'function') {
+      window.removerWaypointPorCoordenadas(ev.id, ev.lat, ev.lon, ev.nome);
+    }
+  };
+
+  window.recarregarPastaEventosLocal = function recarregarPastaEventosLocal() {
+    eventos = carregarLocal();
+    window.fecharAvisoPontoRecemGravado();
+    renderizarTudo();
+  };
+
   function adicionarEvento(lat, lon) {
     const info = TIPOS_MARCA[tipoSelecionado] || TIPOS_MARCA.geral;
     const inputNome = document.getElementById('pastaEventoNome');
@@ -251,6 +291,7 @@
     eventos.unshift(novo);
     guardarLocal();
     renderizarTudo();
+    mostrarAvisoPontoRecemGravado(novo);
     if (inputNome) inputNome.value = '';
   }
 
@@ -371,6 +412,9 @@
     if (!painelAberto && modoCliqueMapa) {
       window.alternarModoCliqueEvento(false);
     }
+    if (!painelAberto) {
+      window.fecharAvisoPontoRecemGravado();
+    }
   };
 
   window.selecionarTipoMarcaEvento = function selecionarTipoMarcaEvento(tipo) {
@@ -405,6 +449,7 @@
     eventos.unshift(novo);
     guardarLocal();
     renderizarTudo();
+    mostrarAvisoPontoRecemGravado(novo);
   };
 
   window.exportarELimparGpxEventos = async function exportarELimparGpxEventos() {
