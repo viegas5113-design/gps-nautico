@@ -44,7 +44,8 @@
   let modoCliqueMapa = false;
   let camadaEventos = null;
   let limiteVisivel = 80;
-  let ultimoPontoGravadoId = null;
+  let pontoOpcoesAtivoId = null;
+  let tipoOpcoesSelecionado = 'geral';
 
   function obterMapa() {
     if (window.mapaGpsNautico && typeof window.mapaGpsNautico.on === 'function') {
@@ -141,22 +142,10 @@
       const lat = Number(ev.lat);
       const lon = Number(ev.lon);
       if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
-      const info = TIPOS_MARCA[ev.tipo] || TIPOS_MARCA.geral;
-      const iconeMostrar = ev.simbolo || info.icone;
       const marker = L.marker([lat, lon], { icon: criarIconeLeaflet(ev.tipo, ev.simbolo, ev.cor) });
-      const popupHtml = `
-        <div style="min-width:195px;font-family:system-ui,sans-serif;">
-          <div style="font-weight:700;font-size:14px;margin-bottom:4px;">${iconeMostrar} ${escaparHtml(ev.nome)}</div>
-          <div style="font-size:12px;color:#475569;margin-bottom:4px;">Tipo: <strong>${escaparHtml(info.nome)}</strong></div>
-          <div style="font-size:12px;font-family:monospace;color:#0f172a;margin-bottom:8px;">${lat.toFixed(5)}, ${lon.toFixed(5)}</div>
-          <div style="display:flex;gap:6px;">
-            <button type="button" onclick="window.navegarEventoGpsNautico('${escaparHtml(ev.id)}')" style="flex:1;padding:6px 8px;border:none;border-radius:6px;background:#0284c7;color:#fff;font-weight:700;cursor:pointer;font-size:12px;">
-              🧭 Ir
-            </button>
-          </div>
-        </div>
-      `;
-      marker.bindPopup(popupHtml);
+      marker.on('click', () => {
+        window.abrirOpcoesPonto(ev.id);
+      });
       camada.addLayer(marker);
     }
   }
@@ -197,6 +186,9 @@
               <button type="button" onclick="window.navegarEventoGpsNautico('${escaparHtml(ev.id)}')" style="padding:5px 8px;border:none;border-radius:6px;background:#0284c7;color:#fff;font-size:11px;font-weight:700;cursor:pointer;" title="Navegar para este ponto">
                 🧭 Ir
               </button>
+              <button type="button" class="btn-opcoes-evento" onclick="window.abrirOpcoesPonto('${escaparHtml(ev.id)}')" style="padding:5px 8px;border:1px solid #475569;border-radius:6px;background:#1e293b;color:#f8fafc;font-size:11px;font-weight:700;cursor:pointer;" title="Opções do ponto">
+                ⚙️
+              </button>
             </div>
           </div>
         `;
@@ -229,45 +221,145 @@
     return { lat: 37.101, lon: -8.674 };
   }
 
-  function mostrarAvisoPontoRecemGravado(ev) {
-    if (!ev) return;
-    ultimoPontoGravadoId = ev.id;
-    const banner = document.getElementById('pastaEventoRecemGravadoBanner');
-    const texto = document.getElementById('pastaEventoRecemGravadoTexto');
-    const info = TIPOS_MARCA[ev.tipo] || TIPOS_MARCA.geral;
-    if (texto) {
-      texto.textContent = `✅ Gravado: ${ev.simbolo || info.icone} ${ev.nome}`;
-      texto.title = ev.nome;
-    }
-    if (banner) {
-      banner.style.display = 'flex';
+  function formatarCoordGrausMin(valor, isLat) {
+    const num = Number(valor);
+    if (!Number.isFinite(num)) return '--';
+    const dir = isLat ? (num >= 0 ? 'N' : 'S') : (num >= 0 ? 'E' : 'W');
+    const abs = Math.abs(num);
+    const graus = Math.floor(abs);
+    const mins = ((abs - graus) * 60).toFixed(3).padStart(6, '0');
+    const gPad = isLat ? String(graus).padStart(2, '0') : String(graus).padStart(3, '0');
+    return `${gPad}° ${mins}' ${dir}`;
+  }
+
+  function notificarPonto(msg) {
+    const toast = document.getElementById('toastNotificacao');
+    if (toast) {
+      toast.textContent = msg;
+      toast.classList.add('visivel');
+      clearTimeout(window.__toastOpcoesPontoTimer);
+      window.__toastOpcoesPontoTimer = setTimeout(() => toast.classList.remove('visivel'), 3000);
     }
   }
 
-  window.fecharAvisoPontoRecemGravado = function fecharAvisoPontoRecemGravado() {
-    ultimoPontoGravadoId = null;
-    const banner = document.getElementById('pastaEventoRecemGravadoBanner');
-    if (banner) {
-      banner.style.display = 'none';
+  window.selecionarTipoOpcoesPonto = function selecionarTipoOpcoesPonto(tipo) {
+    if (!TIPOS_MARCA[tipo]) return;
+    tipoOpcoesSelecionado = tipo;
+    document.querySelectorAll('.opcoes-tipo-btn').forEach((btn) => {
+      btn.classList.toggle('ativo', btn.dataset.tipo === tipo);
+    });
+    const badge = document.getElementById('opcoesPontoTipoBadge');
+    if (badge) {
+      const info = TIPOS_MARCA[tipo];
+      badge.textContent = `${info.icone} ${info.nome}`;
     }
   };
 
-  window.apagarPontoRecemGravado = function apagarPontoRecemGravado() {
-    if (!ultimoPontoGravadoId) return;
-    const idAlvo = ultimoPontoGravadoId;
+  window.cancelarConfirmacaoApagarPonto = function cancelarConfirmacaoApagarPonto() {
+    const p1 = document.getElementById('opcoesPontoApagarPasso1');
+    const p2 = document.getElementById('opcoesPontoApagarPasso2');
+    if (p1) p1.style.display = 'block';
+    if (p2) p2.style.display = 'none';
+  };
+
+  window.pedirConfirmacaoApagarPonto = function pedirConfirmacaoApagarPonto() {
+    const p1 = document.getElementById('opcoesPontoApagarPasso1');
+    const p2 = document.getElementById('opcoesPontoApagarPasso2');
+    if (p1) p1.style.display = 'none';
+    if (p2) p2.style.display = 'flex';
+  };
+
+  window.abrirOpcoesPonto = function abrirOpcoesPonto(id) {
+    const ev = eventos.find((e) => String(e.id) === String(id));
+    const modal = document.getElementById('opcoesPontoModal');
+    if (!ev || !modal) return;
+
+    pontoOpcoesAtivoId = ev.id;
+    const lat = Number(ev.lat);
+    const lon = Number(ev.lon);
+    const coordsNautEl = document.getElementById('opcoesPontoCoordsNaut');
+    const coordsDecEl = document.getElementById('opcoesPontoCoordsDec');
+    const inpNome = document.getElementById('opcoesPontoNome');
+    const inpNota = document.getElementById('opcoesPontoNota');
+
+    if (coordsNautEl) {
+      coordsNautEl.textContent = `${formatarCoordGrausMin(lat, true)} · ${formatarCoordGrausMin(lon, false)}`;
+    }
+    if (coordsDecEl) {
+      coordsDecEl.textContent = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+    }
+    if (inpNome) inpNome.value = ev.nome || '';
+    if (inpNota) inpNota.value = ev.nota || '';
+
+    window.selecionarTipoOpcoesPonto(TIPOS_MARCA[ev.tipo] ? ev.tipo : 'geral');
+    window.cancelarConfirmacaoApagarPonto();
+    modal.style.display = 'flex';
+  };
+
+  window.fecharOpcoesPonto = function fecharOpcoesPonto() {
+    pontoOpcoesAtivoId = null;
+    const modal = document.getElementById('opcoesPontoModal');
+    if (modal) modal.style.display = 'none';
+    window.cancelarConfirmacaoApagarPonto();
+  };
+
+  window.guardarOpcoesPonto = function guardarOpcoesPonto() {
+    if (!pontoOpcoesAtivoId) return;
+    const ev = eventos.find((e) => String(e.id) === String(pontoOpcoesAtivoId));
+    if (!ev) return;
+
+    const inpNome = document.getElementById('opcoesPontoNome');
+    const inpNota = document.getElementById('opcoesPontoNota');
+    const novoNome = inpNome ? inpNome.value.trim() : '';
+    const novaNota = inpNota ? inpNota.value.trim() : '';
+    const info = TIPOS_MARCA[tipoOpcoesSelecionado] || TIPOS_MARCA.geral;
+
+    if (novoNome) ev.nome = novoNome;
+    ev.tipo = info.chave;
+    ev.simbolo = info.icone;
+    ev.cor = info.cor;
+    ev.nota = novaNota;
+
+    guardarLocal();
+    renderizarTudo();
+    window.fecharOpcoesPonto();
+    notificarPonto(`💾 Ponto atualizado: ${ev.nome}`);
+  };
+
+  window.navegarOpcoesPonto = function navegarOpcoesPonto() {
+    if (!pontoOpcoesAtivoId) return;
+    const idAlvo = pontoOpcoesAtivoId;
+    window.fecharOpcoesPonto();
+    window.navegarEventoGpsNautico(idAlvo);
+  };
+
+  window.registarDiarioOpcoesPonto = function registarDiarioOpcoesPonto() {
+    if (!pontoOpcoesAtivoId) return;
+    const ev = eventos.find((e) => String(e.id) === String(pontoOpcoesAtivoId));
+    window.fecharOpcoesPonto();
+    window.alternarPastaEventos(false);
+    if (ev && window.DiarioPesca && typeof window.DiarioPesca.abrirNovoComPesqueiro === 'function') {
+      window.DiarioPesca.abrirNovoComPesqueiro(ev.nome, ev.lat, ev.lon);
+    }
+  };
+
+  window.confirmarApagarOpcoesPonto = function confirmarApagarOpcoesPonto() {
+    if (!pontoOpcoesAtivoId) return;
+    const idAlvo = pontoOpcoesAtivoId;
     const ev = eventos.find((e) => String(e.id) === String(idAlvo));
     eventos = eventos.filter((e) => String(e.id) !== String(idAlvo));
-    window.fecharAvisoPontoRecemGravado();
+    window.fecharOpcoesPonto();
     guardarLocal();
     renderizarTudo();
     if (ev && typeof window.removerWaypointPorCoordenadas === 'function') {
       window.removerWaypointPorCoordenadas(ev.id, ev.lat, ev.lon, ev.nome);
     }
+    notificarPonto(`🗑️ Ponto apagado: ${ev ? ev.nome : 'Marca'}`);
   };
 
   window.recarregarPastaEventosLocal = function recarregarPastaEventosLocal() {
     eventos = carregarLocal();
-    window.fecharAvisoPontoRecemGravado();
+    window.fecharOpcoesPonto();
     renderizarTudo();
   };
 
@@ -291,8 +383,8 @@
     eventos.unshift(novo);
     guardarLocal();
     renderizarTudo();
-    mostrarAvisoPontoRecemGravado(novo);
     if (inputNome) inputNome.value = '';
+    notificarPonto(`✅ Ponto gravado: ${novo.nome}`);
   }
 
   function gerarConteudoGpx() {
@@ -412,9 +504,6 @@
     if (!painelAberto && modoCliqueMapa) {
       window.alternarModoCliqueEvento(false);
     }
-    if (!painelAberto) {
-      window.fecharAvisoPontoRecemGravado();
-    }
   };
 
   window.selecionarTipoMarcaEvento = function selecionarTipoMarcaEvento(tipo) {
@@ -449,7 +538,7 @@
     eventos.unshift(novo);
     guardarLocal();
     renderizarTudo();
-    mostrarAvisoPontoRecemGravado(novo);
+    notificarPonto(`✅ Ponto gravado: ${novo.nome}`);
   };
 
   window.exportarELimparGpxEventos = async function exportarELimparGpxEventos() {

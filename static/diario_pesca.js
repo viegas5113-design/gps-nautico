@@ -978,6 +978,16 @@
 
   window.DiarioPesca = {
     alternarPainel,
+    abrirNovoComPesqueiro: (nome, lat, lon) => {
+      alternarPainel(true);
+      abrirFormularioNovo(null);
+      const inpNome = document.getElementById('diarioInpPesqueiro');
+      const inpLat = document.getElementById('diarioInpLat');
+      const inpLon = document.getElementById('diarioInpLon');
+      if (inpNome) inpNome.value = nome || '';
+      if (inpLat && Number.isFinite(Number(lat))) inpLat.value = Number(lat).toFixed(5);
+      if (inpLon && Number.isFinite(Number(lon))) inpLon.value = Number(lon).toFixed(5);
+    },
     recarregarLocal: () => {
       carregarRegistos();
       renderizarTudo();

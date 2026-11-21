@@ -313,15 +313,59 @@
           </div>
         </details>
       </div>
-      <div id="pastaEventoRecemGravadoBanner" style="display:none;padding:8px 12px;background:#1e293b;border-bottom:1px solid #334155;align-items:center;justify-content:space-between;gap:8px;flex-shrink:0;">
-        <div id="pastaEventoRecemGravadoTexto" style="font-size:12px;color:#86efac;font-weight:700;min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
-        <div style="display:flex;gap:6px;flex-shrink:0;">
-          <button type="button" id="btnApagarPontoRecemGravado" onclick="apagarPontoRecemGravado()" style="padding:5px 8px;border:none;border-radius:6px;background:#dc2626;color:#fff;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">🗑️ Apagar este ponto</button>
-          <button type="button" id="btnFecharAvisoPontoGravado" onclick="fecharAvisoPontoRecemGravado()" style="padding:5px 8px;border:1px solid #475569;border-radius:6px;background:#0f172a;color:#cbd5e1;font-size:11.5px;font-weight:700;cursor:pointer;" title="Fechar aviso e proteger ponto">✖</button>
-        </div>
-      </div>
       <div id="pastaEventosLista" style="padding:10px 12px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;flex:1;"></div>
     </aside>
+
+    <!-- JANELA DE OPÇÕES DO PONTO ESTILO OPENCPN -->
+    <div id="opcoesPontoModal" class="opcoes-ponto-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="opcoesPontoTitulo" onclick="if(event.target===this) fecharOpcoesPonto()">
+      <div class="opcoes-ponto-card">
+        <div class="opcoes-ponto-header">
+          <div id="opcoesPontoTitulo" class="opcoes-ponto-titulo">⚙️ Opções do Ponto</div>
+          <button type="button" id="btnFecharOpcoesPonto" class="opcoes-ponto-fechar" onclick="fecharOpcoesPonto()" title="Fechar">✖</button>
+        </div>
+        <div class="opcoes-ponto-body">
+          <div class="opcoes-ponto-coords-box">
+            <div id="opcoesPontoCoordsNaut" class="opcoes-ponto-coords-naut">--</div>
+            <div class="opcoes-ponto-coords-sub">
+              <span id="opcoesPontoCoordsDec">--</span>
+              <span id="opcoesPontoTipoBadge" class="opcoes-ponto-badge">📍 Marca Atual</span>
+            </div>
+          </div>
+
+          <label class="opcoes-ponto-label" for="opcoesPontoNome">Nome do Ponto</label>
+          <input type="text" id="opcoesPontoNome" class="opcoes-ponto-input" placeholder="Nome do pesqueiro ou marca...">
+
+          <label class="opcoes-ponto-label">Tipo de Pesca</label>
+          <div class="opcoes-ponto-tipos">
+            <button type="button" class="opcoes-tipo-btn" data-tipo="geral" onclick="selecionarTipoOpcoesPonto('geral')">📍 Marca Atual</button>
+            <button type="button" class="opcoes-tipo-btn" data-tipo="rocha" onclick="selecionarTipoOpcoesPonto('rocha')">🪨 Rocha</button>
+            <button type="button" class="opcoes-tipo-btn" data-tipo="lula" onclick="selecionarTipoOpcoesPonto('lula')">🦑 Lula</button>
+            <button type="button" class="opcoes-tipo-btn" data-tipo="peguilho" onclick="selecionarTipoOpcoesPonto('peguilho')">🪝 Peguilho</button>
+          </div>
+
+          <label class="opcoes-ponto-label" for="opcoesPontoNota">Nota Curta</label>
+          <textarea id="opcoesPontoNota" class="opcoes-ponto-textarea" rows="2" placeholder="Fundo, profundidade, melhor maré, isco..."></textarea>
+
+          <button type="button" id="btnGuardarOpcoesPonto" class="opcoes-ponto-btn-guardar" onclick="guardarOpcoesPonto()">💾 Guardar</button>
+
+          <div class="opcoes-ponto-acoes">
+            <button type="button" id="btnNavOpcoesPonto" class="opcoes-ponto-btn-nav" onclick="navegarOpcoesPonto()">🧭 Navegar para aqui</button>
+            <button type="button" id="btnDiarioOpcoesPonto" class="opcoes-ponto-btn-diario" onclick="registarDiarioOpcoesPonto()">📓 Registar no Diário</button>
+          </div>
+
+          <div id="opcoesPontoApagarPasso1" class="opcoes-ponto-apagar-box">
+            <button type="button" id="btnPedirApagarPonto" class="opcoes-ponto-btn-apagar" onclick="pedirConfirmacaoApagarPonto()">🗑️ Apagar Ponto</button>
+          </div>
+          <div id="opcoesPontoApagarPasso2" class="opcoes-ponto-confirm-box" style="display:none;">
+            <span class="opcoes-ponto-confirm-txt">⚠️ Apagar este ponto?</span>
+            <div class="opcoes-ponto-confirm-btns">
+              <button type="button" id="btnConfirmarApagarPonto" class="opcoes-ponto-btn-confirmar" onclick="confirmarApagarOpcoesPonto()">Confirmar Apagar?</button>
+              <button type="button" id="btnCancelarApagarPonto" class="opcoes-ponto-btn-cancelar" onclick="cancelarConfirmacaoApagarPonto()">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- PAINEL MODO GPS AORUS (100% HTML/JS/CSS) -->
     <section id="aorusPanel" class="aorus-panel" style="display:none;" aria-label="Modo GPS Aorus">
