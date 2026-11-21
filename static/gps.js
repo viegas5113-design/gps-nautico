@@ -1639,8 +1639,17 @@
   // ==========================================
   function registarServiceWorker() {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js')
-        .then(() => console.log('Vigilante GPS Service Worker registado'))
+      let recarregou = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (recarregou) return;
+        recarregou = true;
+        window.location.reload();
+      });
+      navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+        .then((reg) => {
+          reg.update().catch(() => {});
+          console.log('Vigilante GPS Service Worker registado');
+        })
         .catch(e => console.warn('Falha no registo SW:', e));
     }
   }
