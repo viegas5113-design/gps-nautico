@@ -50,10 +50,7 @@
   }
 
   function obterContextoAtual() {
-    if (window.DiarioPesca && typeof window.DiarioPesca.obterContextoResumido === 'function') {
-      return window.DiarioPesca.obterContextoResumido(15);
-    }
-    return {
+    let base = {
       dataHoje: new Date().toISOString().slice(0, 10),
       faseLuaAtual: 'Desconhecida',
       posicaoAtual: null,
@@ -61,6 +58,13 @@
       totalRegistosDiario: 0,
       ultimosRegistos: []
     };
+    if (window.DiarioPesca && typeof window.DiarioPesca.obterContextoResumido === 'function') {
+      base = window.DiarioPesca.obterContextoResumido(15);
+    }
+    if (window.MeteorologiaMaritima && typeof window.MeteorologiaMaritima.obterResumoParaIA === 'function') {
+      base.meteorologia = window.MeteorologiaMaritima.obterResumoParaIA();
+    }
+    return base;
   }
 
   function obterTodosRegistos() {
@@ -83,10 +87,15 @@
       return `${i + 1}. [${r.data} ${r.hora || ''}] ${r.pesqueiro} | ${r.faseLua || '-'} | ${r.especie} (${r.quantidade || '-'}) | Arte: ${r.arte || '-'} | Maré: ${r.mare || '-'} | Mar: ${r.estadoMar || '-'} ${r.vento || ''}${lembrete}`;
     });
 
+    const meteoLinha = ctx.meteorologia?.disponivel
+      ? `\nCondições Marítimas & Hora do Peixe: ${ctx.meteorologia.textoResumo}\n`
+      : '\n';
+
     return (
       `És um especialista em pesca marítima e navegação costeira em Portugal.\n` +
       `Data: ${ctx.dataHoje} | Lua: ${ctx.faseLuaAtual}\n` +
-      `Posição Atual: ${posTxt} | Pesqueiro Alvo: ${alvoTxt}\n` +
+      `Posição Atual: ${posTxt} | Pesqueiro Alvo: ${alvoTxt}` +
+      meteoLinha +
       `Últimos Registos do Diário (${linhasRegistos.length} de ${ctx.totalRegistosDiario}):\n` +
       (linhasRegistos.length ? linhasRegistos.join('\n') : '(Diário ainda sem registos)') +
       `\n\nPergunta do Mestre: ${pergunta}`
@@ -102,10 +111,18 @@
     const mesAtual = hoje.getMonth() + 1;
     const luaAtualNome = (ctx.faseLuaAtual || '').replace(/^[^\wÀ-ÿ]+\s*/, '').trim();
 
+    const meteoBloco = ctx.meteorologia?.disponivel && ctx.meteorologia.atual
+      ? `\n🌤️ **Mar & Tempo:** ${ctx.meteorologia.atual.ventoTexto} · Vaga ${ctx.meteorologia.atual.vagaTexto || '--'} · Água ${ctx.meteorologia.atual.tempAguaTexto || '--'} · Maré ${ctx.meteorologia.atual.mare.estado}` +
+        `\n🎣 **Atividade Agora:** ${ctx.meteorologia.atual.indicePesca}% (${ctx.meteorologia.atual.nivelPesca})` +
+        (ctx.meteorologia.janelasHoje?.length
+          ? `\n🔥 **Melhores Janelas Hoje:** ${ctx.meteorologia.janelasHoje.map((j) => `${j.horario} (${j.indice}% ${j.motivo})`).join(' | ')}`
+          : '')
+      : '';
+
     if (!registos || registos.length === 0) {
       return (
         `Ainda não tens registos no Diário de Pesca.\n\n` +
-        `📍 **Contexto Atual:** ${ctx.dataHoje} · ${ctx.faseLuaAtual}\n` +
+        `📍 **Contexto Atual:** ${ctx.dataHoje} · ${ctx.faseLuaAtual}${meteoBloco}\n\n` +
         `💡 **Sugestão:** Cria alguns registos no botão "📓 Diário -> ➕ Novo Registo" (espécie, arte, maré e lembrete) para que o motor offline possa cruzar a lua, a época e os teus pesqueiros.`
       );
     }
@@ -221,7 +238,8 @@
             (p.r.lembrete ? `\n   🔮 Lembrete: ${p.r.lembrete}` : '')
         )
         .join('\n\n') +
-      `\n\n💡 **Padrão Geral:** Arte **${topArte ? topArte[0] : '-'}** na maré **${topMare ? topMare[0] : '-'}**.`
+      `\n\n💡 **Padrão Geral:** Arte **${topArte ? topArte[0] : '-'}** na maré **${topMare ? topMare[0] : '-'}**.` +
+      (meteoBloco ? `\n${meteoBloco}` : '')
     );
   }
 

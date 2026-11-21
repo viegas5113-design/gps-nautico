@@ -54,6 +54,9 @@
         <button id="btnPastaEventos" type="button" onclick="alternarPastaEventos()" title="Pasta de Eventos" style="background:#b45309;color:#fff;border:1px solid #fbbf24;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">
           📂 Pasta de Eventos
         </button>
+        <button id="btnMeteoPesca" type="button" onclick="window.MeteorologiaMaritima && window.MeteorologiaMaritima.alternarPainel()" title="Meteorologia Marítima e Hora do Peixe" class="btn-top-pill btn-top-meteo">
+          🌤️ Meteo
+        </button>
         <button id="btnDiarioPesca" type="button" onclick="window.DiarioPesca && window.DiarioPesca.alternarPainel()" title="Diário de Pesca com Memória Futura" class="btn-top-pill btn-top-diario">
           📓 Diário
         </button>
@@ -458,6 +461,7 @@
   <script src="static/gps.js"></script>
   <script src="static/pasta_eventos.js"></script>
   <script src="static/aorus.js"></script>
+  <script src="static/meteorologia.js"></script>
   <script src="static/diario_pesca.js"></script>
   <script src="static/agente_pesca_ui.js"></script>
   <script src="static/backup_nautico.js"></script>

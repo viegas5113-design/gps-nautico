@@ -1,7 +1,7 @@
 // Service Worker Offline-First para o GPS Náutico Independente
 // Funciona 100% no telemóvel mesmo com o computador desligado e sem internet no mar.
 
-const CACHE_NAME = 'gps-nautico-offline-v15';
+const CACHE_NAME = 'gps-nautico-offline-v17';
 const TILE_CACHE_NAME = 'gps-nautico-tiles-v1';
 
 const RECURSOS_ESSENCIAIS = [
@@ -11,6 +11,7 @@ const RECURSOS_ESSENCIAIS = [
   './static/gps.css',
   './static/gps.js',
   './static/aorus.js',
+  './static/meteorologia.js',
   './static/pasta_eventos.js',
   './static/diario_pesca.js',
   './static/agente_pesca_ui.js',
@@ -61,6 +62,15 @@ self.addEventListener('activate', (evento) => {
 self.addEventListener('fetch', (evento) => {
   if (evento.request.method !== 'GET') return;
   const url = new URL(evento.request.url);
+
+  // Não intercetar APIs externas (Open-Meteo, VigilanteAI LAN) — geridas via localStorage
+  if (url.hostname.includes('open-meteo.com') || (url.origin !== self.location.origin &&
+      !url.hostname.includes('tile.openstreetmap.org') &&
+      !url.hostname.includes('openseamap.org') &&
+      !url.hostname.includes('arcgisonline.com') &&
+      !url.hostname.includes('cartocdn.com'))) {
+    return;
+  }
 
   // 1. Intercetar azulejos de mapas online (OSM, OpenSeaMap, Satélite Esri, CartoDB) e guardar para offline no mar
   if (url.hostname.includes('tile.openstreetmap.org') || 
@@ -114,6 +124,7 @@ self.addEventListener('fetch', (evento) => {
     url.pathname.endsWith('/gps.js') ||
     url.pathname.endsWith('/pasta_eventos.js') ||
     url.pathname.endsWith('/aorus.js') ||
+    url.pathname.endsWith('/meteorologia.js') ||
     url.pathname.endsWith('/diario_pesca.js') ||
     url.pathname.endsWith('/agente_pesca_ui.js') ||
     url.pathname.endsWith('/manifest.json')

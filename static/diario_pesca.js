@@ -303,6 +303,10 @@
     const horaDef = registoExistente?.hora || agora.toTimeString().slice(0, 5);
     const pos = obterPosicaoGpsAtual();
 
+    const meteo = !registoExistente && window.MeteorologiaMaritima
+      ? window.MeteorologiaMaritima.obterDadosAtuais()
+      : null;
+
     document.getElementById('diarioInpData').value = dataDef;
     document.getElementById('diarioInpHora').value = horaDef;
     document.getElementById('diarioInpPesqueiro').value = registoExistente?.pesqueiro || '';
@@ -313,11 +317,13 @@
     document.getElementById('diarioInpEspecie').value = registoExistente?.especie || '';
     document.getElementById('diarioInpQtd').value = registoExistente?.quantidade || '';
     document.getElementById('diarioInpArte').value = registoExistente?.arte || '';
-    document.getElementById('diarioInpMare').value = registoExistente?.mare || 'Enchente';
-    document.getElementById('diarioInpVento').value = registoExistente?.vento || '';
-    document.getElementById('diarioInpMar').value = registoExistente?.estadoMar || 'Chão';
+    document.getElementById('diarioInpMare').value = registoExistente?.mare || meteo?.mare?.chipMare || 'Enchente';
+    document.getElementById('diarioInpVento').value = registoExistente?.vento || meteo?.ventoTexto || '';
+    document.getElementById('diarioInpMar').value = registoExistente?.estadoMar || meteo?.estadoMarDiario || 'Chão';
+    document.getElementById('diarioInpAlturaVaga').value = registoExistente?.alturaVaga || meteo?.vagaTexto || '';
+    document.getElementById('diarioInpPressao').value = registoExistente?.pressao || meteo?.pressaoTexto || '';
     document.getElementById('diarioInpProf').value = registoExistente?.profundidade || '';
-    document.getElementById('diarioInpTempAgua').value = registoExistente?.tempAgua || '';
+    document.getElementById('diarioInpTempAgua').value = registoExistente?.tempAgua || meteo?.tempAguaTexto || '';
     document.getElementById('diarioInpQualidade').value = registoExistente?.qualidade || 'boa';
     document.getElementById('diarioInpLembrete').value = registoExistente?.lembrete || '';
     document.getElementById('diarioInpLembreteData').value = registoExistente?.lembreteData || '';
@@ -360,6 +366,8 @@
     const mare = document.getElementById('diarioInpMare').value.trim();
     const vento = document.getElementById('diarioInpVento').value.trim();
     const estadoMar = document.getElementById('diarioInpMar').value.trim();
+    const alturaVaga = document.getElementById('diarioInpAlturaVaga').value.trim();
+    const pressao = document.getElementById('diarioInpPressao').value.trim();
     const profundidade = document.getElementById('diarioInpProf').value.trim();
     const tempAgua = document.getElementById('diarioInpTempAgua').value.trim();
     const qualidade = document.getElementById('diarioInpQualidade').value || 'normal';
@@ -382,6 +390,8 @@
       mare,
       vento,
       estadoMar,
+      alturaVaga,
+      pressao,
       profundidade,
       tempAgua,
       qualidade,
@@ -777,6 +787,17 @@
                 <option value="normal">👍 Normal</option>
                 <option value="fraca">⚪ Fraca</option>
               </select>
+            </div>
+          </div>
+
+          <div class="diario-form-grid2">
+            <div>
+              <label>Altura da Vaga</label>
+              <input type="text" id="diarioInpAlturaVaga" placeholder="Ex: 0.8 m (7s)">
+            </div>
+            <div>
+              <label>Pressão (hPa)</label>
+              <input type="text" id="diarioInpPressao" placeholder="Ex: 1018 hPa">
             </div>
           </div>
 
