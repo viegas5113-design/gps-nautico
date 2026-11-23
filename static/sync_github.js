@@ -293,8 +293,20 @@
     return novos.length;
   }
 
+  function construirUrlContents(repo, caminho) {
+    const repoCod = String(repo || DEFAULT_REPO)
+      .split('/')
+      .map(encodeURIComponent)
+      .join('/');
+    const caminhoCod = String(caminho || SYNC_PATH)
+      .split('/')
+      .map(encodeURIComponent)
+      .join('/');
+    return `https://api.github.com/repos/${repoCod}/contents/${caminhoCod}`;
+  }
+
   async function lerFicheiroRemoto(repo, pat) {
-    const url = `https://api.github.com/repos/${repo}/contents/${SYNC_PATH}?ref=main`;
+    const url = `${construirUrlContents(repo, SYNC_PATH)}?ref=main`;
     const resp = await fetch(url, {
       method: 'GET',
       cache: 'no-store',
@@ -326,7 +338,7 @@
   }
 
   async function gravarFicheiroRemoto(repo, pat, sha, pontosUnificados, qtdNovos) {
-    const url = `https://api.github.com/repos/${repo}/contents/${SYNC_PATH}`;
+    const url = construirUrlContents(repo, SYNC_PATH);
     const conteudoJson = JSON.stringify(
       {
         versao: 1,
