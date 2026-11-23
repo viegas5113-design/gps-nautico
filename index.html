@@ -189,7 +189,13 @@
         <span class="drawer-title">
           <span>⚓ Pesqueiros &amp; Waypoints</span>
         </span>
-        <button id="btnFecharGaveta" class="btn-fechar">✕</button>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button id="btnSincronizarGaveta" type="button" onclick="window.SyncGithubNautico && window.SyncGithubNautico.sincronizarAgora()" title="Sincronizar pontos com GitHub" style="display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border:1px solid #334155;border-radius:999px;background:#0f172a;color:#cbd5e1;font-size:11px;font-weight:600;cursor:pointer;">
+            <span id="syncDotGaveta" style="width:8px;height:8px;border-radius:50%;background:#94a3b8;display:inline-block;"></span>
+            <span id="syncLblGaveta">Sincronizar</span>
+          </button>
+          <button id="btnFecharGaveta" class="btn-fechar">✕</button>
+        </div>
       </div>
 
       <div class="drawer-pesquisa-box">
@@ -261,6 +267,19 @@
             <span style="font-size:11px;color:#94a3b8;">Por defeito usa <code>http://192.168.1.195:8765</code>. No mar passa automaticamente para o Motor Offline.</span>
           </div>
 
+          <div style="margin-top:4px;padding:10px;background:rgba(15,23,42,0.7);border:1px solid #334155;border-radius:8px;display:flex;flex-direction:column;gap:6px;">
+            <span style="font-size:12px;font-weight:700;color:#38bdf8;">☁️ Sincronização Automática (GitHub):</span>
+            <label for="inputSyncGithubRepo" style="font-size:11px;color:#cbd5e1;">Repositório GitHub (dono/repo):</label>
+            <input id="inputSyncGithubRepo" type="text" placeholder="viegas5113-design/gps-nautico" style="width:100%;box-sizing:border-box;padding:7px 9px;border-radius:6px;border:1px solid #475569;background:#0f172a;color:#f8fafc;font-size:12px;">
+            <label for="inputSyncGithubToken" style="font-size:11px;color:#cbd5e1;">Token Pessoal do GitHub (PAT):</label>
+            <div style="display:flex;gap:6px;">
+              <input id="inputSyncGithubToken" type="password" placeholder="ghp_... ou github_pat_..." autocomplete="off" style="flex:1;padding:7px 9px;border-radius:6px;border:1px solid #475569;background:#0f172a;color:#f8fafc;font-size:12px;">
+              <button id="btnGuardarSyncGithub" type="button" style="padding:7px 10px;border:none;border-radius:6px;background:#0284c7;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">Guardar</button>
+            </div>
+            <span id="syncGithubConfigStatus" style="font-size:11px;color:#94a3b8;">⚪ Sem token configurado.</span>
+            <span style="font-size:10.5px;color:#94a3b8;">Lê e atualiza <code>dados_sync/pontos_novos.json</code> automaticamente quando há internet.</span>
+          </div>
+
           <div style="margin-top:10px;padding:12px;background:rgba(0,0,0,0.3);border-radius:8px;">
             <b style="color:#38bdf8;">💡 Dica para Navegação em Alto-Mar:</b>
             <p style="margin:4px 0 0 0;font-size:11.5px;color:#cbd5e1;line-height:1.4;">
@@ -287,6 +306,10 @@
           <button type="button" id="btnBackupEventosPc" onclick="window.BackupNautico && window.BackupNautico.guardarManual()" style="padding:7px 6px;border:1px solid #38bdf8;border-radius:8px;background:#0c4a6e;color:#e0f2fe;font-size:11px;font-weight:700;cursor:pointer;">☁️ Guardar Backup no PC</button>
           <button type="button" id="btnRestaurarEventosPc" onclick="window.BackupNautico && window.BackupNautico.restaurarManual()" style="padding:7px 6px;border:1px solid #818cf8;border-radius:8px;background:#1e1b4b;color:#e0e7ff;font-size:11px;font-weight:700;cursor:pointer;">📥 Restaurar do PC</button>
         </div>
+        <button type="button" id="btnSincronizarPontos" onclick="window.SyncGithubNautico && window.SyncGithubNautico.sincronizarAgora()" title="Sincronizar pontos com GitHub" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:6px 8px;border:1px solid #334155;border-radius:8px;background:#1e293b;color:#e2e8f0;font-size:11.5px;font-weight:600;cursor:pointer;">
+          <span id="syncDotPontos" style="width:8px;height:8px;border-radius:50%;background:#94a3b8;display:inline-block;"></span>
+          <span id="syncLblPontos">Sincronizar</span>
+        </button>
       </div>
       <div style="padding:10px 12px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid #334155;overflow-y:auto;flex-shrink:0;max-height:55vh;">
         <div style="font-size:11.5px;font-weight:700;color:#38bdf8;text-transform:uppercase;">Tipo de Marca (Pesca):</div>
@@ -465,5 +488,6 @@
   <script src="static/diario_pesca.js"></script>
   <script src="static/agente_pesca_ui.js"></script>
   <script src="static/backup_nautico.js"></script>
+  <script src="static/sync_github.js"></script>
 </body>
 </html>

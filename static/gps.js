@@ -48,6 +48,7 @@
     inicializarMapa();
     carregarPreferencias();
     configurarEventosUI();
+    carregarWaypointsSalvosLocalStorage();
     iniciarLocalizacaoGps();
     iniciarBussola();
     solicitarWakeLock();
@@ -790,12 +791,21 @@
         }
       }
 
+      // Evitar duplicados com pontos já carregados (ex: localStorage / marcas manuais)
+      const chavesExistentes = new Set(estado.waypoints.map(chaveUnicaWaypoint));
+      const waypointsUnicos = novosWaypoints.filter(w => {
+        const chave = chaveUnicaWaypoint(w);
+        if (chavesExistentes.has(chave)) return false;
+        chavesExistentes.add(chave);
+        return true;
+      });
+
       // Renderizar no Mapa
-      renderizarWaypointsGpx(novosWaypoints);
+      renderizarWaypointsGpx(waypointsUnicos);
       renderizarTrilhosGpx(novosTrilhos);
 
       // Guardar na lista
-      estado.waypoints = estado.waypoints.concat(novosWaypoints);
+      estado.waypoints = estado.waypoints.concat(waypointsUnicos);
       atualizarContadorWaypoints();
       atualizarListaWaypointsGaveta();
 
@@ -1080,48 +1090,164 @@
   }
 
   // ==========================================
-  // MARCAÇÃO RÁPIDA DE PONTO (MOB)
+  // MARCAÇÃO RÁPIDA DE PONTO (MOB) E LISTA UNIFICADA
   // ==========================================
+  function formatarDataHoraPonto(data = new Date()) {
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(data.getDate())}/${pad(data.getMonth() + 1)}/${data.getFullYear()} ${pad(data.getHours())}:${pad(data.getMinutes())}`;
+  }
+
+  function chaveUnicaWaypoint(w) {
+    const nome = String(w.nome || '').trim().toLowerCase();
+    const lat = Number(w.lat).toFixed(5);
+    const lon = Number(w.lon).toFixed(5);
+    return `${nome}|${lat}|${lon}`;
+  }
+
+  function ehPontoManual(w) {
+    if (!w) return false;
+    if (w.manual === true || w.origem === 'Manual') return true;
+    const idStr = String(w.id || '');
+    return idStr.startsWith('mob_') || idStr.startsWith('ev-') || idStr.startsWith('ev_');
+  }
+
+  function carregarWaypointsSalvosLocalStorage() {
+    try {
+      const bruto = localStorage.getItem('gps_nautico_pasta_eventos_v1');
+      if (!bruto) return;
+      const lista = JSON.parse(bruto);
+      if (!Array.isArray(lista) || lista.length === 0) return;
+
+      const chavesExistentes = new Set(estado.waypoints.map(chaveUnicaWaypoint));
+      const novosParaAdicionar = [];
+
+      for (const ev of lista) {
+        const lat = Number(ev.lat);
+        const lon = Number(ev.lon);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+        const wpt = {
+          id: ev.id || `wpt_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+          nome: String(ev.nome || 'Ponto').trim(),
+          lat,
+          lon,
+          ele: ev.ele ?? null,
+          desc: ev.nota || ev.desc || '',
+          sym: ev.sym || ev.simbolo || 'Waypoint',
+          tipo: ev.tipo || '',
+          origem: ev.origem || (ehPontoManual(ev) ? 'Manual' : 'GPX'),
+          manual: ehPontoManual(ev),
+          criadoEmTs: Number(ev.criadoEmTs) || (ev.criado_em ? Date.parse(String(ev.criado_em).replace(' ', 'T')) || 0 : 0)
+        };
+        const chave = chaveUnicaWaypoint(wpt);
+        if (chavesExistentes.has(chave)) continue;
+        chavesExistentes.add(chave);
+        novosParaAdicionar.push(wpt);
+      }
+
+      if (novosParaAdicionar.length > 0) {
+        renderizarWaypointsGpx(novosParaAdicionar);
+        estado.waypoints = estado.waypoints.concat(novosParaAdicionar);
+        atualizarContadorWaypoints();
+        atualizarListaWaypointsGaveta();
+      }
+    } catch (_) {}
+  }
+
+  window.adicionarWaypointPrincipal = function(dadosWpt, opcoes = {}) {
+    if (!dadosWpt) return null;
+    const lat = Number(dadosWpt.lat);
+    const lon = Number(dadosWpt.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+
+    const novoWpt = {
+      id: dadosWpt.id || `wpt_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+      nome: String(dadosWpt.nome || 'Ponto').trim(),
+      lat,
+      lon,
+      ele: dadosWpt.ele ?? null,
+      desc: dadosWpt.desc || dadosWpt.nota || '',
+      sym: dadosWpt.sym || dadosWpt.simbolo || 'Waypoint',
+      tipo: dadosWpt.tipo || '',
+      origem: dadosWpt.origem || 'Manual',
+      manual: Boolean(dadosWpt.manual ?? (dadosWpt.origem === 'Manual')),
+      criadoEmTs: Number(dadosWpt.criadoEmTs) || Date.now()
+    };
+
+    const chaveNovo = chaveUnicaWaypoint(novoWpt);
+    const existente = estado.waypoints.find(w =>
+      (novoWpt.id && String(w.id) === String(novoWpt.id)) || chaveUnicaWaypoint(w) === chaveNovo
+    );
+    if (existente) {
+      if (novoWpt.desc && !existente.desc) existente.desc = novoWpt.desc;
+      return existente;
+    }
+
+    if (opcoes.noTopo !== false) {
+      estado.waypoints.unshift(novoWpt);
+    } else {
+      estado.waypoints.push(novoWpt);
+    }
+
+    if (opcoes.renderizarNoMapa !== false) {
+      renderizarWaypointsGpx([novoWpt]);
+    }
+    atualizarContadorWaypoints();
+    atualizarListaWaypointsGaveta();
+    return novoWpt;
+  };
+
   function marcarPontoRapidoMob() {
+    const agora = new Date();
+    const dataHora = formatarDataHoraPonto(agora);
     let lat, lon, origemTxt;
     if (estado.posicao) {
       lat = estado.posicao.lat;
       lon = estado.posicao.lon;
-      origemTxt = `Marcado no telemóvel às ${new Date().toLocaleTimeString()}`;
+      origemTxt = `Marcado em ${dataHora} (telemóvel)`;
     } else if (estado.mapa) {
       const c = estado.mapa.getCenter();
       lat = c.lat;
       lon = c.lng;
-      origemTxt = `Marcado no centro da carta às ${new Date().toLocaleTimeString()}`;
+      origemTxt = `Marcado em ${dataHora} (carta)`;
     } else {
       mostrarNotificacao('A aguardar sinal GPS para marcar ponto...', 2500);
       return;
     }
 
     const num = estado.waypoints.length + 1;
-    const nomeSugerido = `MOB_${num}`;
+    const nomeSugerido = `${num} - MOB (${dataHora})`;
 
     const nome = prompt('Nome do ponto marcado / MOB:', nomeSugerido);
     if (!nome) return;
 
+    let nomeFinal = nome.trim();
+    if (!/^\d+\s*-/.test(nomeFinal)) {
+      nomeFinal = `${num} - ${nomeFinal}`;
+    }
+
     const novoWpt = {
-      id: `mob_${Date.now()}`,
-      nome: nome.trim(),
+      id: `mob_${agora.getTime()}`,
+      nome: nomeFinal,
       lat,
       lon,
       ele: null,
       desc: origemTxt,
       sym: 'MOB',
-      origem: 'Manual'
+      origem: 'Manual',
+      manual: true,
+      criadoEmTs: agora.getTime()
     };
 
     renderizarWaypointsGpx([novoWpt]);
-    estado.waypoints.push(novoWpt);
+    estado.waypoints.unshift(novoWpt);
     atualizarContadorWaypoints();
     atualizarListaWaypointsGaveta();
 
     if (typeof window.integrarGpxNaPastaEventos === 'function') {
       window.integrarGpxNaPastaEventos([novoWpt]);
+    }
+    if (window.SyncGithubNautico && typeof window.SyncGithubNautico.notificarPontoNovoLocal === 'function') {
+      window.SyncGithubNautico.notificarPontoNovoLocal();
     }
 
     mostrarNotificacao(`📍 Ponto marcado: ${novoWpt.nome}`, 2500);
@@ -1201,6 +1327,11 @@
       if (mesmoId || mesmaCoord) {
         if (nomeNovo) w.nome = nomeNovo;
         if (notaNova !== undefined) w.desc = notaNova;
+        if (w.camada && estado.camadaWaypoints) {
+          estado.camadaWaypoints.removeLayer(w.camada);
+          w.camada = null;
+        }
+        renderizarWaypointsGpx([w]);
         alterou = true;
       }
     });
@@ -1225,6 +1356,9 @@
   function atualizarContadorWaypoints() {
     const el = document.getElementById('badgeCountWaypoints');
     if (el) el.textContent = estado.waypoints.length;
+    if (typeof window.atualizarContadorPastaEventos === 'function') {
+      window.atualizarContadorPastaEventos();
+    }
   }
 
   function atualizarListaWaypointsGaveta() {
@@ -1247,13 +1381,23 @@
         w.distanciaNm = w.distanciaM / 1852.0;
         w.rumo = calcularAzimute(lat, lon, w.lat, w.lon);
       });
+    }
 
-      // Ordenação
-      if (estado.filtroAtual === 'proximos') {
-        filtrados.sort((a, b) => a.distanciaM - b.distanciaM);
-      } else if (estado.filtroAtual === 'alfabetica') {
-        filtrados.sort((a, b) => a.nome.localeCompare(b.nome));
-      }
+    // Ordenação: no filtro padrão ('todos'), pontos criados recentemente ficam sempre no topo
+    if (estado.filtroAtual === 'proximos' && estado.posicao) {
+      filtrados.sort((a, b) => a.distanciaM - b.distanciaM);
+    } else if (estado.filtroAtual === 'alfabetica') {
+      filtrados.sort((a, b) => a.nome.localeCompare(b.nome));
+    } else {
+      filtrados.sort((a, b) => {
+        const aManual = ehPontoManual(a) ? 1 : 0;
+        const bManual = ehPontoManual(b) ? 1 : 0;
+        if (aManual !== bManual) return bManual - aManual;
+        if (aManual && bManual) {
+          return (Number(b.criadoEmTs) || 0) - (Number(a.criadoEmTs) || 0);
+        }
+        return 0;
+      });
     }
 
     if (filtrados.length === 0) {

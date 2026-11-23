@@ -72,6 +72,11 @@
       .replace(/'/g, '&apos;');
   }
 
+  function formatarDataHoraPonto(data = new Date()) {
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(data.getDate())}/${pad(data.getMonth() + 1)}/${data.getFullYear()} ${pad(data.getHours())}:${pad(data.getMinutes())}`;
+  }
+
   function normalizarTipoCategoria(tipoBruto, symBruto, descBruto) {
     const texto = `${tipoBruto || ''} ${symBruto || ''} ${descBruto || ''}`.toLowerCase();
     if (texto.includes('rocha') || texto.includes('pedra')) return 'rocha';
@@ -116,8 +121,51 @@
     if (!m || typeof L === 'undefined') return null;
     if (!camadaEventos) {
       camadaEventos = L.layerGroup().addTo(m);
+    } else if (!m.hasLayer(camadaEventos)) {
+      camadaEventos.addTo(m);
     }
     return camadaEventos;
+  }
+
+  function obterListaUnificada() {
+    const lista = [];
+    const chavesVistas = new Set();
+
+    const adicionarSeUnico = (item) => {
+      const lat = Number(item.lat);
+      const lon = Number(item.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+      const nome = String(item.nome || 'Ponto').trim();
+      const chave = `${nome.toLowerCase()}|${lat.toFixed(5)}|${lon.toFixed(5)}`;
+      if (chavesVistas.has(chave)) return;
+      chavesVistas.add(chave);
+      lista.push({ ...item, nome, lat, lon });
+    };
+
+    for (const ev of eventos) {
+      adicionarSeUnico(ev);
+    }
+
+    const estGps = window.__vigilanteEstadoGps;
+    if (estGps && Array.isArray(estGps.waypoints)) {
+      for (const w of estGps.waypoints) {
+        adicionarSeUnico(w);
+      }
+    }
+
+    return lista;
+  }
+
+  function obterProximoNumeroSequencial() {
+    return obterListaUnificada().length + 1;
+  }
+
+  function formatarNomeComNumero(numeroSeq, nomeManual, nomePadrao) {
+    const limpo = String(nomeManual || '').trim();
+    if (limpo) {
+      return /^\d+\s*-/.test(limpo) ? limpo : `${numeroSeq} - ${limpo}`;
+    }
+    return `${numeroSeq} - ${nomePadrao}`;
   }
 
   function criarIconeLeaflet(tipo, simboloCustom, corCustom) {
@@ -154,8 +202,9 @@
     const listaEl = document.getElementById('pastaEventosLista');
     const contadorEl = document.getElementById('pastaEventosContador');
     const btnPasta = document.getElementById('btnPastaEventos');
-    if (contadorEl) contadorEl.textContent = String(eventos.length);
-    if (btnPasta) btnPasta.textContent = `📂 Pasta de Eventos (${eventos.length})`;
+    const totalUnificado = obterListaUnificada().length;
+    if (contadorEl) contadorEl.textContent = String(totalUnificado);
+    if (btnPasta) btnPasta.textContent = `📂 Pasta de Eventos (${totalUnificado})`;
     atualizarRotuloFicheiro();
     if (!listaEl) return;
 
@@ -181,6 +230,7 @@
               <div style="font-size:11px;color:#94a3b8;margin-top:2px;">
                 <span style="color:${info.borda};font-weight:600;">${escaparHtml(info.nome)}</span> · ${lat}, ${lon}
               </div>
+              ${ev.nota ? `<div style="font-size:10.5px;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;">${escaparHtml(ev.nota)}</div>` : ''}
             </div>
             <div style="display:flex;gap:4px;flex-shrink:0;">
               <button type="button" onclick="window.navegarEventoGpsNautico('${escaparHtml(ev.id)}')" style="padding:5px 8px;border:none;border-radius:6px;background:#0284c7;color:#fff;font-size:11px;font-weight:700;cursor:pointer;" title="Navegar para este ponto">
@@ -207,6 +257,10 @@
     renderizarMapa();
     renderizarLista();
   }
+
+  window.atualizarContadorPastaEventos = function atualizarContadorPastaEventos() {
+    renderizarLista();
+  };
 
   function obterCoordenadasAtuais() {
     const posGps = window.__vigilanteEstadoGps && window.__vigilanteEstadoGps.posicao;
@@ -406,42 +460,71 @@
     const info = TIPOS_MARCA[tipoSelecionado] || TIPOS_MARCA.geral;
     const inputNome = document.getElementById('pastaEventoNome');
     const nomeManual = inputNome ? inputNome.value.trim() : '';
-    const contadorTipo = eventos.filter((e) => e.tipo === info.chave).length + 1;
-    const nomeFinal = nomeManual || `${info.nome} #${contadorTipo}`;
+    const numeroSeq = obterProximoNumeroSequencial();
+    const agora = new Date();
+    const dataHora = formatarDataHoraPonto(agora);
+    const nomeFinal = formatarNomeComNumero(numeroSeq, nomeManual, `${info.nome} (${dataHora})`);
+    const notaAuto = `Marcado em ${dataHora}`;
 
     const novo = {
-      id: `ev-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      id: `ev-${agora.getTime()}-${Math.floor(Math.random() * 1000)}`,
       nome: nomeFinal,
       tipo: info.chave,
       lat: Number(lat.toFixed(6)),
       lon: Number(lon.toFixed(6)),
-      criado_em: new Date().toISOString().slice(0, 19).replace('T', ' '),
+      nota: notaAuto,
+      manual: true,
+      criadoEmTs: agora.getTime(),
+      criado_em: agora.toISOString().slice(0, 19).replace('T', ' '),
       origem: ficheiroAtivo || DEFAULT_GPX_NAME,
     };
 
     eventos.unshift(novo);
     guardarLocal();
     renderizarTudo();
+
+    if (typeof window.adicionarWaypointPrincipal === 'function') {
+      window.adicionarWaypointPrincipal({
+        id: novo.id,
+        nome: novo.nome,
+        lat: novo.lat,
+        lon: novo.lon,
+        desc: novo.nota,
+        sym: info.nome,
+        tipo: novo.tipo,
+        origem: 'Manual',
+        manual: true,
+        criadoEmTs: novo.criadoEmTs,
+      }, { noTopo: true, renderizarNoMapa: true });
+    }
+
     if (inputNome) inputNome.value = '';
+    if (window.SyncGithubNautico && typeof window.SyncGithubNautico.notificarPontoNovoLocal === 'function') {
+      window.SyncGithubNautico.notificarPontoNovoLocal();
+    }
     notificarPonto(`✅ Ponto gravado: ${novo.nome}`);
   }
 
   function gerarConteudoGpx() {
     const linhas = [
       '<?xml version="1.0" encoding="UTF-8"?>',
-      '<gpx version="1.1" creator="GPS Nautico - Pasta de Eventos" xmlns="http://www.topografix.com/GPX/1/1">',
+      '<gpx version="1.1" creator="GPS Nautico - Lista Unificada" xmlns="http://www.topografix.com/GPX/1/1">',
     ];
 
-    for (const ev of eventos) {
-      const lat = Number(ev.lat);
-      const lon = Number(ev.lon);
-      if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+    const listaUnificada = obterListaUnificada();
+
+    for (const ev of listaUnificada) {
       const info = TIPOS_MARCA[ev.tipo] || TIPOS_MARCA.geral;
-      linhas.push(`  <wpt lat="${lat.toFixed(6)}" lon="${lon.toFixed(6)}">`);
+      const sym = ev.sym || ev.simbolo || info.nome;
+      const desc = ev.nota || ev.desc || info.nome;
+      linhas.push(`  <wpt lat="${ev.lat.toFixed(6)}" lon="${ev.lon.toFixed(6)}">`);
+      if (ev.ele !== null && ev.ele !== undefined && Number.isFinite(Number(ev.ele))) {
+        linhas.push(`    <ele>${Number(ev.ele)}</ele>`);
+      }
       linhas.push(`    <name>${escaparXml(ev.nome)}</name>`);
       linhas.push(`    <type>${escaparXml(info.chave)}</type>`);
-      linhas.push(`    <sym>${escaparXml(info.nome)}</sym>`);
-      linhas.push(`    <desc>${escaparXml(info.nome)}</desc>`);
+      linhas.push(`    <sym>${escaparXml(sym)}</sym>`);
+      linhas.push(`    <desc>${escaparXml(desc)}</desc>`);
       linhas.push('  </wpt>');
     }
 
@@ -471,15 +554,27 @@
         if (chavesExistentes.has(chave)) continue;
         chavesExistentes.add(chave);
 
-        eventos.push({
+        const ehManual = Boolean(w.manual || w.origem === 'Manual');
+        const item = {
           id: w.id || `gpx-${Date.now()}-${i}`,
           nome,
           tipo: normalizarTipoCategoria(w.tipo, w.sym, w.desc),
           lat: Number(lat.toFixed(6)),
           lon: Number(lon.toFixed(6)),
+          ele: w.ele ?? null,
+          sym: w.sym || '',
+          nota: w.desc ? String(w.desc).trim() : '',
+          manual: ehManual,
+          criadoEmTs: Number(w.criadoEmTs) || (ehManual ? Date.now() : 0),
           criado_em: new Date().toISOString().slice(0, 19).replace('T', ' '),
-          origem: ficheiroAtivo,
-        });
+          origem: ehManual ? 'Manual' : ficheiroAtivo,
+        };
+
+        if (ehManual) {
+          eventos.unshift(item);
+        } else {
+          eventos.push(item);
+        }
       }
     }
 
@@ -560,23 +655,50 @@
   window.marcarRapidoAorus = function marcarRapidoAorus(simbolo, nomeBase, cor, categoria) {
     const { lat, lon } = obterCoordenadasAtuais();
     const tipo = TIPOS_MARCA[categoria] ? categoria : 'geral';
-    const contador = eventos.filter((e) => (e.simbolo || '') === simbolo).length + 1;
+    const numeroSeq = obterProximoNumeroSequencial();
     const inputNome = document.getElementById('pastaEventoNome');
     const nomeManual = inputNome ? inputNome.value.trim() : '';
+    const agora = new Date();
+    const dataHora = formatarDataHoraPonto(agora);
+    const nomeFinal = formatarNomeComNumero(numeroSeq, nomeManual, `${nomeBase} (${dataHora})`);
     const novo = {
-      id: `ev_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      id: `ev_${agora.getTime()}_${Math.random().toString(36).slice(2, 7)}`,
       tipo,
       simbolo: simbolo || TIPOS_MARCA[tipo].icone,
       cor: cor || TIPOS_MARCA[tipo].cor,
-      nome: nomeManual || `${nomeBase} #${contador}`,
+      nome: nomeFinal,
       lat: Number(lat),
       lon: Number(lon),
-      criadoEm: new Date().toISOString(),
+      nota: `Marcado em ${dataHora}`,
+      manual: true,
+      criadoEmTs: agora.getTime(),
+      criado_em: agora.toISOString().slice(0, 19).replace('T', ' '),
+      criadoEm: agora.toISOString(),
     };
     if (inputNome) inputNome.value = '';
     eventos.unshift(novo);
     guardarLocal();
     renderizarTudo();
+
+    if (typeof window.adicionarWaypointPrincipal === 'function') {
+      window.adicionarWaypointPrincipal({
+        id: novo.id,
+        nome: novo.nome,
+        lat: novo.lat,
+        lon: novo.lon,
+        desc: novo.nota,
+        sym: novo.simbolo,
+        tipo: novo.tipo,
+        origem: 'Manual',
+        manual: true,
+        criadoEmTs: novo.criadoEmTs,
+      }, { noTopo: true, renderizarNoMapa: true });
+    }
+
+    if (window.SyncGithubNautico && typeof window.SyncGithubNautico.notificarPontoNovoLocal === 'function') {
+      window.SyncGithubNautico.notificarPontoNovoLocal();
+    }
+
     notificarPonto(`✅ Ponto gravado: ${novo.nome}`);
   };
 
