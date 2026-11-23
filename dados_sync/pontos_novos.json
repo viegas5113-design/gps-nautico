@@ -1,1 +1,22 @@
-{"pontos":[]}
+{
+  "versao": 1,
+  "atualizado_em": "2026-11-23T14:58:41.433Z",
+  "total": 1,
+  "pontos": [
+    {
+      "id": "mob_1795365120994",
+      "nome": "MOb hotel 🏩 3805",
+      "tipo": "lula",
+      "simbolo": "🦑",
+      "cor": "#db2777",
+      "lat": 37.098836,
+      "lon": -8.650255,
+      "ele": null,
+      "nota": "",
+      "manual": true,
+      "origem": "Manual",
+      "criadoEmTs": 1795445921429,
+      "criado_em": "2026-11-22 16:32:01"
+    }
+  ]
+}
