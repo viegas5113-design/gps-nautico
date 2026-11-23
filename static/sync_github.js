@@ -294,7 +294,7 @@
   }
 
   async function lerFicheiroRemoto(repo, pat) {
-    const url = `https://api.github.com/repos/${repo}/contents/${SYNC_PATH}`;
+    const url = `https://api.github.com/repos/${repo}/contents/${SYNC_PATH}?ref=main`;
     const resp = await fetch(url, {
       method: 'GET',
       cache: 'no-store',
@@ -341,6 +341,7 @@
     const payload = {
       message: `Sincronização GPS Náutico (${qtdNovos} novo(s), ${pontosUnificados.length} total)`,
       content: utf8ParaBase64(conteudoJson),
+      branch: 'main',
     };
     if (sha) payload.sha = sha;
 
