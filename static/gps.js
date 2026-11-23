@@ -791,11 +791,11 @@
         }
       }
 
-      // Evitar duplicados com pontos já carregados (ex: localStorage / marcas manuais)
-      const chavesExistentes = new Set(estado.waypoints.map(chaveUnicaWaypoint));
+      // Evitar duplicados com pontos já carregados (por lat/lon a 5 casas decimais)
+      const chavesExistentes = new Set(estado.waypoints.map(chaveUnicaWaypoint).filter(Boolean));
       const waypointsUnicos = novosWaypoints.filter(w => {
         const chave = chaveUnicaWaypoint(w);
-        if (chavesExistentes.has(chave)) return false;
+        if (!chave || chavesExistentes.has(chave)) return false;
         chavesExistentes.add(chave);
         return true;
       });
@@ -1098,17 +1098,18 @@
   }
 
   function chaveUnicaWaypoint(w) {
-    const nome = String(w.nome || '').trim().toLowerCase();
-    const lat = Number(w.lat).toFixed(5);
-    const lon = Number(w.lon).toFixed(5);
-    return `${nome}|${lat}|${lon}`;
+    if (!w) return '';
+    const lat = Number(w.lat);
+    const lon = Number(w.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return '';
+    return `${lat.toFixed(5)}|${lon.toFixed(5)}`;
   }
 
   function ehPontoManual(w) {
     if (!w) return false;
     if (w.manual === true || w.origem === 'Manual') return true;
     const idStr = String(w.id || '');
-    return idStr.startsWith('mob_') || idStr.startsWith('ev-') || idStr.startsWith('ev_');
+    return idStr.startsWith('mob_') || idStr.startsWith('ev-') || idStr.startsWith('ev_') || idStr.startsWith('sync_');
   }
 
   function carregarWaypointsSalvosLocalStorage() {
@@ -1118,10 +1119,11 @@
       const lista = JSON.parse(bruto);
       if (!Array.isArray(lista) || lista.length === 0) return;
 
-      const chavesExistentes = new Set(estado.waypoints.map(chaveUnicaWaypoint));
+      const chavesExistentes = new Set(estado.waypoints.map(chaveUnicaWaypoint).filter(Boolean));
       const novosParaAdicionar = [];
 
       for (const ev of lista) {
+        if (!ehPontoManual(ev)) continue;
         const lat = Number(ev.lat);
         const lon = Number(ev.lon);
         if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
@@ -1134,12 +1136,12 @@
           desc: ev.nota || ev.desc || '',
           sym: ev.sym || ev.simbolo || 'Waypoint',
           tipo: ev.tipo || '',
-          origem: ev.origem || (ehPontoManual(ev) ? 'Manual' : 'GPX'),
-          manual: ehPontoManual(ev),
+          origem: 'Manual',
+          manual: true,
           criadoEmTs: Number(ev.criadoEmTs) || (ev.criado_em ? Date.parse(String(ev.criado_em).replace(' ', 'T')) || 0 : 0)
         };
         const chave = chaveUnicaWaypoint(wpt);
-        if (chavesExistentes.has(chave)) continue;
+        if (!chave || chavesExistentes.has(chave)) continue;
         chavesExistentes.add(chave);
         novosParaAdicionar.push(wpt);
       }

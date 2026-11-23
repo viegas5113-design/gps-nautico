@@ -267,17 +267,15 @@
             <span style="font-size:11px;color:#94a3b8;">Por defeito usa <code>http://192.168.1.195:8765</code>. No mar passa automaticamente para o Motor Offline.</span>
           </div>
 
-          <div style="margin-top:4px;padding:10px;background:rgba(15,23,42,0.7);border:1px solid #334155;border-radius:8px;display:flex;flex-direction:column;gap:6px;">
-            <span style="font-size:12px;font-weight:700;color:#38bdf8;">☁️ Sincronização Automática (GitHub):</span>
-            <label for="inputSyncGithubRepo" style="font-size:11px;color:#cbd5e1;">Repositório GitHub (dono/repo):</label>
-            <input id="inputSyncGithubRepo" type="text" placeholder="viegas5113-design/gps-nautico" style="width:100%;box-sizing:border-box;padding:7px 9px;border-radius:6px;border:1px solid #475569;background:#0f172a;color:#f8fafc;font-size:12px;">
-            <label for="inputSyncGithubToken" style="font-size:11px;color:#cbd5e1;">Token Pessoal do GitHub (PAT):</label>
-            <div style="display:flex;gap:6px;">
-              <input id="inputSyncGithubToken" type="password" placeholder="ghp_... ou github_pat_..." autocomplete="off" style="flex:1;padding:7px 9px;border-radius:6px;border:1px solid #475569;background:#0f172a;color:#f8fafc;font-size:12px;">
-              <button id="btnGuardarSyncGithub" type="button" style="padding:7px 10px;border:none;border-radius:6px;background:#0284c7;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">Guardar</button>
-            </div>
-            <span id="syncGithubConfigStatus" style="font-size:11px;color:#94a3b8;">⚪ Sem token configurado.</span>
-            <span style="font-size:10.5px;color:#94a3b8;">Lê e atualiza <code>dados_sync/pontos_novos.json</code> automaticamente quando há internet.</span>
+          <div style="margin-top:4px;padding:12px;background:rgba(14,116,144,0.22);border:2px solid #38bdf8;border-radius:10px;display:flex;flex-direction:column;gap:8px;box-shadow:0 0 14px rgba(56,189,248,0.18);">
+            <span style="font-size:13px;font-weight:800;color:#7dd3fc;">☁️ Sincronização Automática (GitHub) — Token PAT</span>
+            <label for="inputSyncGithubRepo" style="font-size:11.5px;color:#e2e8f0;font-weight:600;">Repositório GitHub (dono/repo):</label>
+            <input id="inputSyncGithubRepo" type="text" placeholder="viegas5113-design/gps-nautico" style="width:100%;box-sizing:border-box;padding:8px 10px;border-radius:6px;border:1px solid #38bdf8;background:#0f172a;color:#f8fafc;font-size:12.5px;">
+            <label for="inputSyncGithubToken" style="font-size:11.5px;color:#e2e8f0;font-weight:600;">Cola aqui o teu Token Pessoal do GitHub (<code>ghp_...</code>):</label>
+            <input id="inputSyncGithubToken" type="password" placeholder="ghp_... ou github_pat_..." autocomplete="off" style="width:100%;box-sizing:border-box;padding:8px 10px;border-radius:6px;border:1px solid #38bdf8;background:#0f172a;color:#f8fafc;font-size:12.5px;">
+            <button id="btnGuardarSyncGithub" type="button" style="width:100%;padding:9px 12px;border:none;border-radius:7px;background:#0284c7;color:#fff;font-size:12.5px;font-weight:800;cursor:pointer;">💾 Guardar e Sincronizar Agora</button>
+            <span id="syncGithubConfigStatus" style="font-size:11.5px;color:#94a3b8;font-weight:600;">⚪ Sem token configurado.</span>
+            <span style="font-size:10.5px;color:#cbd5e1;">Lê e atualiza <code>dados_sync/pontos_novos.json</code> automaticamente quando há internet.</span>
           </div>
 
           <div style="margin-top:10px;padding:12px;background:rgba(0,0,0,0.3);border-radius:8px;">
@@ -286,6 +284,26 @@
               O GPS do telemóvel comunica diretamente com os satélites mesmo sem rede de telemóvel ou internet móvel. Mantém o ecrã ativo para monitorizar o rumo e distância aos pesqueiros.
             </p>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL RÁPIDO DE CONFIGURAÇÃO DO TOKEN GITHUB -->
+    <div id="modalSyncToken" class="modal-overlay" onclick="if(event.target===this) this.classList.remove('aberta')">
+      <div class="modal-card" style="border:2px solid #38bdf8;box-shadow:0 0 24px rgba(56,189,248,0.28);">
+        <div class="modal-header">
+          <span class="modal-title" style="color:#7dd3fc;">☁️ Configurar Sincronização GitHub</span>
+          <button type="button" class="btn-fechar" onclick="document.getElementById('modalSyncToken').classList.remove('aberta')">✕</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;font-size:13px;">
+          <div style="padding:10px;background:rgba(250,204,21,0.12);border:1px solid #eab308;border-radius:8px;color:#fef08a;font-size:12px;line-height:1.4;">
+            ⚠️ Ainda não tens um Token Pessoal do GitHub guardado neste dispositivo. Cola o teu token abaixo para sincronizar pontos automaticamente entre o telemóvel e o computador.
+          </div>
+          <label for="inputSyncModalRepo" style="font-size:12px;font-weight:700;color:#cbd5e1;">Repositório (dono/repo):</label>
+          <input id="inputSyncModalRepo" type="text" placeholder="viegas5113-design/gps-nautico" style="width:100%;box-sizing:border-box;padding:9px 10px;border-radius:8px;border:1px solid #475569;background:#0f172a;color:#f8fafc;font-size:13px;">
+          <label for="inputSyncModalToken" style="font-size:12px;font-weight:700;color:#7dd3fc;">Token Pessoal do GitHub (<code>ghp_...</code>):</label>
+          <input id="inputSyncModalToken" type="password" placeholder="Cola aqui o token ghp_..." autocomplete="off" style="width:100%;box-sizing:border-box;padding:10px;border-radius:8px;border:2px solid #38bdf8;background:#0f172a;color:#f8fafc;font-size:13px;">
+          <button id="btnGuardarSyncModal" type="button" style="width:100%;padding:11px;border:none;border-radius:8px;background:#0284c7;color:#fff;font-size:13.5px;font-weight:800;cursor:pointer;">💾 Guardar e Sincronizar Agora</button>
         </div>
       </div>
     </div>

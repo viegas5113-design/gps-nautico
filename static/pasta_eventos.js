@@ -85,9 +85,38 @@
     return 'geral';
   }
 
+  function ehPontoManual(p) {
+    if (!p) return false;
+    if (p.manual === true || p.origem === 'Manual') return true;
+    const idStr = String(p.id || '');
+    return idStr.startsWith('ev-') || idStr.startsWith('ev_') || idStr.startsWith('mob_') || idStr.startsWith('sync_');
+  }
+
+  function chaveUnicaCoord(p) {
+    if (!p) return '';
+    const lat = Number(p.lat);
+    const lon = Number(p.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return '';
+    return `${lat.toFixed(5)}|${lon.toFixed(5)}`;
+  }
+
+  function deduplicarEventos(lista) {
+    const vistos = new Set();
+    const res = [];
+    for (const item of lista) {
+      const chave = chaveUnicaCoord(item);
+      if (!chave || vistos.has(chave)) continue;
+      vistos.add(chave);
+      res.push(item);
+    }
+    return res;
+  }
+
   function guardarLocal() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(eventos));
+      const apenasManuais = deduplicarEventos(eventos.filter(ehPontoManual));
+      eventos = apenasManuais;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(apenasManuais));
       localStorage.setItem(FILE_KEY, ficheiroAtivo || DEFAULT_GPX_NAME);
     } catch (_) {}
     if (window.BackupNautico && typeof window.BackupNautico.agendarSilencioso === 'function') {
@@ -102,7 +131,14 @@
       const bruto = localStorage.getItem(STORAGE_KEY);
       if (!bruto) return [];
       const dados = JSON.parse(bruto);
-      return Array.isArray(dados) ? dados : [];
+      if (!Array.isArray(dados)) return [];
+      const limpos = deduplicarEventos(dados.filter(ehPontoManual));
+      if (limpos.length !== dados.length) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(limpos));
+        } catch (_) {}
+      }
+      return limpos;
     } catch (_) {
       return [];
     }
@@ -135,10 +171,10 @@
       const lat = Number(item.lat);
       const lon = Number(item.lon);
       if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
-      const nome = String(item.nome || 'Ponto').trim();
-      const chave = `${nome.toLowerCase()}|${lat.toFixed(5)}|${lon.toFixed(5)}`;
+      const chave = `${lat.toFixed(5)}|${lon.toFixed(5)}`;
       if (chavesVistas.has(chave)) return;
       chavesVistas.add(chave);
+      const nome = String(item.nome || 'Ponto').trim();
       lista.push({ ...item, nome, lat, lon });
     };
 
@@ -187,6 +223,7 @@
     camada.clearLayers();
 
     for (const ev of eventos) {
+      if (!ehPontoManual(ev)) continue;
       const lat = Number(ev.lat);
       const lon = Number(ev.lon);
       if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
@@ -202,19 +239,20 @@
     const listaEl = document.getElementById('pastaEventosLista');
     const contadorEl = document.getElementById('pastaEventosContador');
     const btnPasta = document.getElementById('btnPastaEventos');
-    const totalUnificado = obterListaUnificada().length;
+    const listaUnificada = obterListaUnificada();
+    const totalUnificado = listaUnificada.length;
     if (contadorEl) contadorEl.textContent = String(totalUnificado);
     if (btnPasta) btnPasta.textContent = `📂 Pasta de Eventos (${totalUnificado})`;
     atualizarRotuloFicheiro();
     if (!listaEl) return;
 
-    if (eventos.length === 0) {
+    if (totalUnificado === 0) {
       listaEl.innerHTML = '<div style="padding:12px;text-align:center;color:#94a3b8;font-size:12px;">Ainda não há pontos gravados na Pasta de Eventos.</div>';
       return;
     }
 
-    const visiveis = eventos.slice(0, limiteVisivel);
-    const restante = eventos.length - visiveis.length;
+    const visiveis = listaUnificada.slice(0, limiteVisivel);
+    const restante = totalUnificado - visiveis.length;
 
     listaEl.innerHTML = visiveis
       .map((ev) => {
@@ -323,8 +361,25 @@
     if (p2) p2.style.display = 'flex';
   };
 
+  function encontrarPontoUnificadoPorId(id) {
+    const emEventos = eventos.find((e) => String(e.id) === String(id));
+    if (emEventos) return emEventos;
+    const estGps = window.__vigilanteEstadoGps;
+    if (estGps && Array.isArray(estGps.waypoints)) {
+      return estGps.waypoints.find((w) => String(w.id) === String(id)) || null;
+    }
+    return null;
+  }
+
   window.abrirOpcoesPonto = function abrirOpcoesPonto(id) {
-    const ev = eventos.find((e) => String(e.id) === String(id));
+    let ev = eventos.find((e) => String(e.id) === String(id));
+    if (!ev) {
+      const wpt = encontrarPontoUnificadoPorId(id);
+      if (wpt && typeof window.abrirOpcoesPontoPorWaypoint === 'function') {
+        window.abrirOpcoesPontoPorWaypoint(wpt);
+        return;
+      }
+    }
     const modal = document.getElementById('opcoesPontoModal');
     if (!ev || !modal) return;
 
@@ -539,23 +594,22 @@
       fileHandle = null;
     }
 
+    let alterouManuais = false;
     if (Array.isArray(waypoints) && waypoints.length > 0) {
-      const chavesExistentes = new Set(
-        eventos.map((e) => `${String(e.nome || '').trim().toLowerCase()}|${Number(e.lat).toFixed(5)}|${Number(e.lon).toFixed(5)}`)
-      );
+      const chavesExistentes = new Set(eventos.map(chaveUnicaCoord).filter(Boolean));
 
       for (let i = waypoints.length - 1; i >= 0; i--) {
         const w = waypoints[i];
+        if (!ehPontoManual(w)) continue;
         const lat = Number(w.lat);
         const lon = Number(w.lon);
         if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
-        const nome = String(w.nome || 'Ponto GPX').trim();
-        const chave = `${nome.toLowerCase()}|${lat.toFixed(5)}|${lon.toFixed(5)}`;
-        if (chavesExistentes.has(chave)) continue;
+        const chave = chaveUnicaCoord({ lat, lon });
+        if (!chave || chavesExistentes.has(chave)) continue;
         chavesExistentes.add(chave);
 
-        const ehManual = Boolean(w.manual || w.origem === 'Manual');
-        const item = {
+        const nome = String(w.nome || 'Ponto GPX').trim();
+        eventos.unshift({
           id: w.id || `gpx-${Date.now()}-${i}`,
           nome,
           tipo: normalizarTipoCategoria(w.tipo, w.sym, w.desc),
@@ -563,22 +617,23 @@
           lon: Number(lon.toFixed(6)),
           ele: w.ele ?? null,
           sym: w.sym || '',
-          nota: w.desc ? String(w.desc).trim() : '',
-          manual: ehManual,
-          criadoEmTs: Number(w.criadoEmTs) || (ehManual ? Date.now() : 0),
-          criado_em: new Date().toISOString().slice(0, 19).replace('T', ' '),
-          origem: ehManual ? 'Manual' : ficheiroAtivo,
-        };
-
-        if (ehManual) {
-          eventos.unshift(item);
-        } else {
-          eventos.push(item);
-        }
+          nota: w.desc ? String(w.desc).trim() : (w.nota ? String(w.nota).trim() : ''),
+          manual: true,
+          criadoEmTs: Number(w.criadoEmTs) || Date.now(),
+          criado_em: w.criado_em || new Date().toISOString().slice(0, 19).replace('T', ' '),
+          origem: 'Manual',
+        });
+        alterouManuais = true;
       }
     }
 
-    guardarLocal();
+    if (alterouManuais) {
+      guardarLocal();
+    } else {
+      try {
+        localStorage.setItem(FILE_KEY, ficheiroAtivo || DEFAULT_GPX_NAME);
+      } catch (_) {}
+    }
     renderizarTudo();
   };
 
@@ -735,7 +790,7 @@
   };
 
   window.centrarEventoGpsNautico = function centrarEventoGpsNautico(id) {
-    const ev = eventos.find((e) => String(e.id) === String(id));
+    const ev = encontrarPontoUnificadoPorId(id);
     const m = obterMapa();
     if (!ev || !m) return;
     if (typeof window.alternarModoGps === 'function') {
@@ -745,7 +800,7 @@
   };
 
   window.navegarEventoGpsNautico = function navegarEventoGpsNautico(id) {
-    const ev = eventos.find((e) => String(e.id) === String(id));
+    const ev = encontrarPontoUnificadoPorId(id);
     const estado = window.__vigilanteEstadoGps;
     if (!ev || !estado) return;
     const alvo = {

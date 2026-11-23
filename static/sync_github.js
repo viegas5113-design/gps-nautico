@@ -29,11 +29,10 @@
 
   function chaveUnica(p) {
     if (!p) return '';
-    const nome = String(p.nome || '').trim().toLowerCase();
     const lat = Number(p.lat);
     const lon = Number(p.lon);
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) return '';
-    return `${nome}|${lat.toFixed(5)}|${lon.toFixed(5)}`;
+    return `${lat.toFixed(5)}|${lon.toFixed(5)}`;
   }
 
   function ehPontoManual(p) {
@@ -427,6 +426,18 @@
   }
 
   function abrirConfigSync() {
+    const { repo, pat } = obterConfig();
+    const modalSync = document.getElementById('modalSyncToken');
+    const inpModalRepo = document.getElementById('inputSyncModalRepo');
+    const inpModalPat = document.getElementById('inputSyncModalToken');
+    if (modalSync) {
+      if (inpModalRepo) inpModalRepo.value = repo;
+      if (inpModalPat) inpModalPat.value = pat;
+      modalSync.classList.add('aberta');
+      if (inpModalPat) setTimeout(() => inpModalPat.focus(), 120);
+      return;
+    }
+
     const modal = document.getElementById('modalDefinicoes');
     if (modal) modal.classList.add('aberta');
     const inp = document.getElementById('inputSyncGithubToken');
@@ -452,21 +463,50 @@
     const inpRepo = document.getElementById('inputSyncGithubRepo');
     const inpPat = document.getElementById('inputSyncGithubToken');
     const btnGuardar = document.getElementById('btnGuardarSyncGithub');
+    const inpModalRepo = document.getElementById('inputSyncModalRepo');
+    const inpModalPat = document.getElementById('inputSyncModalToken');
+    const btnGuardarModal = document.getElementById('btnGuardarSyncModal');
 
     if (inpRepo) inpRepo.value = repo;
     if (inpPat) inpPat.value = pat;
+    if (inpModalRepo) inpModalRepo.value = repo;
+    if (inpModalPat) inpModalPat.value = pat;
+
+    const aplicarConfigESincronizar = (novoRepo, novoPat) => {
+      guardarConfig(novoRepo, novoPat);
+      const repoLimpo = String(novoRepo || '').trim() || DEFAULT_REPO;
+      const patLimpo = String(novoPat || '').trim();
+      if (inpRepo) inpRepo.value = repoLimpo;
+      if (inpPat) inpPat.value = patLimpo;
+      if (inpModalRepo) inpModalRepo.value = repoLimpo;
+      if (inpModalPat) inpModalPat.value = patLimpo;
+
+      const modalSync = document.getElementById('modalSyncToken');
+      if (modalSync) modalSync.classList.remove('aberta');
+
+      if (patLimpo) {
+        notificar('☁️ Token guardado! A sincronizar pontos...');
+        sincronizarAgora({ silencioso: false });
+      } else {
+        notificar('Token removido. Sincronização desativada.');
+      }
+    };
 
     if (btnGuardar) {
       btnGuardar.addEventListener('click', () => {
-        const novoRepo = inpRepo ? inpRepo.value : DEFAULT_REPO;
-        const novoPat = inpPat ? inpPat.value : '';
-        guardarConfig(novoRepo, novoPat);
-        if (novoPat && novoPat.trim()) {
-          notificar('☁️ Configuração de sincronização guardada!');
-          sincronizarAgora({ silencioso: false });
-        } else {
-          notificar('Token removido. Sincronização desativada.');
-        }
+        aplicarConfigESincronizar(
+          inpRepo ? inpRepo.value : DEFAULT_REPO,
+          inpPat ? inpPat.value : ''
+        );
+      });
+    }
+
+    if (btnGuardarModal) {
+      btnGuardarModal.addEventListener('click', () => {
+        aplicarConfigESincronizar(
+          inpModalRepo ? inpModalRepo.value : DEFAULT_REPO,
+          inpModalPat ? inpModalPat.value : ''
+        );
       });
     }
 
