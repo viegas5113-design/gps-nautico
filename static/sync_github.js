@@ -42,20 +42,37 @@
     return idStr.startsWith('mob_') || idStr.startsWith('ev-') || idStr.startsWith('ev_');
   }
 
+  function normalizarRepo(repo) {
+    let limpo = String(repo || '').trim();
+    limpo = limpo.replace(/^https?:\/\/github\.com\//i, '');
+    limpo = limpo.replace(/\.git$/i, '').replace(/^\/+|\/+$/g, '').trim();
+    if (!limpo || !limpo.includes('/')) return DEFAULT_REPO;
+    return limpo;
+  }
+
   function obterConfig() {
     let repo = DEFAULT_REPO;
     let pat = '';
     try {
       const r = localStorage.getItem(KEY_REPO);
-      if (r && r.trim()) repo = r.trim();
+      if (r !== null) {
+        repo = normalizarRepo(r);
+        if (repo !== r) localStorage.setItem(KEY_REPO, repo);
+      }
       const t = localStorage.getItem(KEY_PAT);
-      if (t && t.trim()) pat = t.trim();
+      if (t !== null) {
+        pat = String(t).trim();
+        if (pat !== t) {
+          if (pat) localStorage.setItem(KEY_PAT, pat);
+          else localStorage.removeItem(KEY_PAT);
+        }
+      }
     } catch (_) {}
     return { repo, pat };
   }
 
   function guardarConfig(repo, pat) {
-    const repoLimpo = String(repo || '').trim() || DEFAULT_REPO;
+    const repoLimpo = normalizarRepo(repo);
     const patLimpo = String(pat || '').trim();
     try {
       localStorage.setItem(KEY_REPO, repoLimpo);
@@ -344,7 +361,7 @@
     return resp.json();
   }
 
-  async function sincronizarAgora({ silencioso = false } = {}) {
+  async function sincronizarAgora({ silencioso = false, criarSeInexistente = false } = {}) {
     const { repo, pat } = obterConfig();
     if (!pat) {
       atualizarIndicadorUI();
@@ -375,7 +392,8 @@
       const locais = obterPontosManuaisLocais();
       const paraEnviar = locais.filter((p) => !chavesRemotas.has(chaveUnica(p)));
 
-      if (paraEnviar.length > 0 || (!remoto.existe && locais.length > 0)) {
+      const deveCriarInicial = !remoto.existe && (locais.length > 0 || criarSeInexistente || !silencioso);
+      if (paraEnviar.length > 0 || deveCriarInicial) {
         const mapaUnificado = new Map();
         [...locais, ...remoto.pontos].forEach((p) => {
           const c = chaveUnica(p);
@@ -474,7 +492,7 @@
 
     const aplicarConfigESincronizar = (novoRepo, novoPat) => {
       guardarConfig(novoRepo, novoPat);
-      const repoLimpo = String(novoRepo || '').trim() || DEFAULT_REPO;
+      const repoLimpo = normalizarRepo(novoRepo);
       const patLimpo = String(novoPat || '').trim();
       if (inpRepo) inpRepo.value = repoLimpo;
       if (inpPat) inpPat.value = patLimpo;
@@ -486,7 +504,7 @@
 
       if (patLimpo) {
         notificar('☁️ Token guardado! A sincronizar pontos...');
-        sincronizarAgora({ silencioso: false });
+        sincronizarAgora({ silencioso: false, criarSeInexistente: true });
       } else {
         notificar('Token removido. Sincronização desativada.');
       }
