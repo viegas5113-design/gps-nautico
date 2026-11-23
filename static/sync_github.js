@@ -39,15 +39,23 @@
     if (!p) return false;
     if (p.manual === true || p.origem === 'Manual') return true;
     const idStr = String(p.id || '');
-    return idStr.startsWith('mob_') || idStr.startsWith('ev-') || idStr.startsWith('ev_');
+    return idStr.startsWith('mob_') || idStr.startsWith('ev-') || idStr.startsWith('ev_') || idStr.startsWith('sync_');
   }
 
   function normalizarRepo(repo) {
     let limpo = String(repo || '').trim();
     limpo = limpo.replace(/^https?:\/\/github\.com\//i, '');
     limpo = limpo.replace(/\.git$/i, '').replace(/^\/+|\/+$/g, '').trim();
-    if (!limpo || !limpo.includes('/')) return DEFAULT_REPO;
-    return limpo;
+    const partes = limpo.split('/').map((s) => s.trim()).filter(Boolean);
+    if (partes.length < 2) return DEFAULT_REPO;
+    return `${partes[0]}/${partes[1]}`;
+  }
+
+  function limparToken(pat) {
+    return String(pat || '')
+      .trim()
+      .replace(/^bearer\s+/i, '')
+      .replace(/[\r\n\s"']+/g, '');
   }
 
   function obterConfig() {
@@ -61,7 +69,7 @@
       }
       const t = localStorage.getItem(KEY_PAT);
       if (t !== null) {
-        pat = String(t).trim();
+        pat = limparToken(t);
         if (pat !== t) {
           if (pat) localStorage.setItem(KEY_PAT, pat);
           else localStorage.removeItem(KEY_PAT);
@@ -73,7 +81,7 @@
 
   function guardarConfig(repo, pat) {
     const repoLimpo = normalizarRepo(repo);
-    const patLimpo = String(pat || '').trim();
+    const patLimpo = limparToken(pat);
     try {
       localStorage.setItem(KEY_REPO, repoLimpo);
       if (patLimpo) {
@@ -368,7 +376,26 @@
     });
 
     if (!resp.ok) {
+      if (resp.status === 409 && sha) {
+        const atualizado = await lerFicheiroRemoto(repo, pat);
+        const retryPayload = { ...payload };
+        if (atualizado.sha) retryPayload.sha = atualizado.sha;
+        else delete retryPayload.sha;
+        const retryResp = await fetch(url, {
+          method: 'PUT',
+          headers: {
+            Accept: 'application/vnd.github+json',
+            Authorization: `Bearer ${pat}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(retryPayload),
+        });
+        if (retryResp.ok) return retryResp.json();
+      }
       const textoErro = await resp.text().catch(() => '');
+      if (resp.status === 404) {
+        throw new Error(`GitHub PUT 404 em ${repo} (verifica se o Token tem permissão "repo" / "Contents: Read and write")`);
+      }
       throw new Error(`GitHub PUT ${resp.status}: ${textoErro.slice(0, 120)}`);
     }
     return resp.json();
