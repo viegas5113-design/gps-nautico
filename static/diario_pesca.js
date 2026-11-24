@@ -97,6 +97,9 @@
     if (window.BackupNautico && typeof window.BackupNautico.agendarSilencioso === 'function') {
       window.BackupNautico.agendarSilencioso();
     }
+    if (window.SyncGithubNautico && typeof window.SyncGithubNautico.notificarPontoNovoLocal === 'function') {
+      window.SyncGithubNautico.notificarPontoNovoLocal();
+    }
   }
 
   function obterPosicaoGpsAtual() {

@@ -1,7 +1,7 @@
 /**
- * Sincronização Automática de Pontos (Waypoints) via GitHub
- * Sincroniza pontos criados manualmente entre telemóvel e computador
- * usando o ficheiro dados_sync/pontos_novos.json no repositório GitHub.
+ * Sincronização Automática de Pontos (Waypoints) e Diário de Pesca via GitHub
+ * Sincroniza pontos criados manualmente (dados_sync/pontos_novos.json)
+ * e registos do Diário de Pesca (dados_sync/diario_pesca.json) entre telemóvel e computador.
  */
 (() => {
   'use strict';
@@ -9,10 +9,13 @@
   const KEY_REPO = 'gps_nautico_sync_github_repo_v1';
   const KEY_PAT = 'gps_nautico_sync_github_pat_v1';
   const KEY_ENVIADOS = 'gps_nautico_sync_enviados_v1';
+  const KEY_DIARIO_ENVIADOS = 'gps_nautico_sync_diario_enviados_v1';
   const KEY_ULTIMA_SYNC = 'gps_nautico_sync_ultima_v1';
   const DEFAULT_REPO = 'viegas5113-design/gps-nautico';
   const SYNC_PATH = 'dados_sync/pontos_novos.json';
+  const SYNC_DIARIO_PATH = 'dados_sync/diario_pesca.json';
   const STORAGE_EVENTOS = 'gps_nautico_pasta_eventos_v1';
+  const STORAGE_DIARIO = 'gps_nautico_diario_pesca_v1';
 
   let sincronizando = false;
   let timerAutoSync = null;
@@ -93,9 +96,9 @@
     atualizarIndicadorUI();
   }
 
-  function obterChavesEnviadas() {
+  function obterChavesEnviadas(chaveStorage = KEY_ENVIADOS) {
     try {
-      const bruto = localStorage.getItem(KEY_ENVIADOS);
+      const bruto = localStorage.getItem(chaveStorage);
       const arr = bruto ? JSON.parse(bruto) : [];
       return new Set(Array.isArray(arr) ? arr : []);
     } catch (_) {
@@ -103,10 +106,33 @@
     }
   }
 
-  function guardarChavesEnviadas(setChaves) {
+  function guardarChavesEnviadas(setChaves, chaveStorage = KEY_ENVIADOS) {
     try {
-      localStorage.setItem(KEY_ENVIADOS, JSON.stringify(Array.from(setChaves)));
+      localStorage.setItem(chaveStorage, JSON.stringify(Array.from(setChaves)));
     } catch (_) {}
+  }
+
+  function chaveUnicaDiario(r) {
+    if (!r || typeof r !== 'object') return '';
+    if (r.id) return `id:${String(r.id).trim()}`;
+    return `cmp:${String(r.data || '').trim()}|${String(r.hora || '').trim()}|${String(r.pesqueiro || '').trim().toLowerCase()}|${String(r.especie || '').trim().toLowerCase()}`;
+  }
+
+  function obterRegistosDiarioLocais() {
+    try {
+      const bruto = localStorage.getItem(STORAGE_DIARIO);
+      const lista = bruto ? JSON.parse(bruto) : [];
+      if (!Array.isArray(lista)) return [];
+      const mapa = new Map();
+      for (const r of lista) {
+        if (!r || typeof r !== 'object') continue;
+        const c = chaveUnicaDiario(r);
+        if (c && !mapa.has(c)) mapa.set(c, r);
+      }
+      return Array.from(mapa.values());
+    } catch (_) {
+      return [];
+    }
   }
 
   function obterPontosManuaisLocais() {
@@ -150,20 +176,31 @@
     return Array.from(mapa.values()).sort((a, b) => (b.criadoEmTs || 0) - (a.criadoEmTs || 0));
   }
 
-  function contarPendentes() {
+  function contarPendentesDetalhado() {
+    let pontos = 0;
     const manuais = obterPontosManuaisLocais();
-    if (manuais.length === 0) return 0;
-    const enviadas = obterChavesEnviadas();
-    let pendentes = 0;
-    for (const p of manuais) {
-      if (!enviadas.has(chaveUnica(p))) pendentes++;
+    if (manuais.length > 0) {
+      const enviadas = obterChavesEnviadas(KEY_ENVIADOS);
+      for (const p of manuais) {
+        if (!enviadas.has(chaveUnica(p))) pontos++;
+      }
     }
-    return pendentes;
+
+    let diario = 0;
+    const registosDiario = obterRegistosDiarioLocais();
+    if (registosDiario.length > 0) {
+      const enviadosDiario = obterChavesEnviadas(KEY_DIARIO_ENVIADOS);
+      for (const r of registosDiario) {
+        if (!enviadosDiario.has(chaveUnicaDiario(r))) diario++;
+      }
+    }
+
+    return { pontos, diario, total: pontos + diario };
   }
 
   function atualizarIndicadorUI() {
     const { pat } = obterConfig();
-    const pendentes = contarPendentes();
+    const { pontos: pendentesPontos, diario: pendentesDiario, total: pendentes } = contarPendentesDetalhado();
 
     let cor = '#94a3b8'; // Cinzento = Sem configuração
     let titulo = 'Sincronização GitHub sem configuração (clica para configurar)';
@@ -171,12 +208,12 @@
 
     if (sincronizando) {
       cor = '#38bdf8';
-      titulo = 'A sincronizar pontos com o GitHub...';
+      titulo = 'A sincronizar pontos e diário com o GitHub...';
       textoCurto = 'A sincronizar...';
     } else if (pat) {
       if (pendentes > 0) {
-        cor = '#facc15'; // Amarelo = Pontos pendentes para enviar
-        titulo = `${pendentes} ponto(s) pendente(s) para enviar para o GitHub`;
+        cor = '#facc15'; // Amarelo = Itens pendentes para enviar
+        titulo = `${pendentesPontos} ponto(s) e ${pendentesDiario} registo(s) do diário pendente(s) para o GitHub`;
         textoCurto = `Sincronizar (${pendentes})`;
       } else {
         cor = '#22c55e'; // Verde = Sincronizado
@@ -210,7 +247,7 @@
         statusConfigEl.textContent = '⚪ Sem token configurado.';
         statusConfigEl.style.color = '#94a3b8';
       } else if (pendentes > 0) {
-        statusConfigEl.textContent = `🟡 ${pendentes} ponto(s) pendente(s) para sincronizar.`;
+        statusConfigEl.textContent = `🟡 ${pendentes} item(ns) pendente(s) (${pendentesPontos} ponto(s), ${pendentesDiario} diário).`;
         statusConfigEl.style.color = '#fde047';
       } else {
         statusConfigEl.textContent = '🟢 Configurado e sincronizado.';
@@ -313,8 +350,8 @@
     return `https://api.github.com/repos/${repoCod}/contents/${caminhoCod}`;
   }
 
-  async function lerFicheiroRemoto(repo, pat) {
-    const url = `${construirUrlContents(repo, SYNC_PATH)}?ref=main`;
+  async function lerFicheiroRemoto(repo, pat, caminho = SYNC_PATH, campoLista = 'pontos') {
+    const url = `${construirUrlContents(repo, caminho)}?ref=main`;
     const resp = await fetch(url, {
       method: 'GET',
       cache: 'no-store',
@@ -325,7 +362,7 @@
     });
 
     if (resp.status === 404) {
-      return { existe: false, sha: null, pontos: [] };
+      return { existe: false, sha: null, itens: [] };
     }
 
     if (!resp.ok) {
@@ -341,25 +378,16 @@
     } catch (_) {
       parsed = {};
     }
-    const pontos = Array.isArray(parsed) ? parsed : (Array.isArray(parsed.pontos) ? parsed.pontos : []);
-    return { existe: true, sha: dados.sha, pontos };
+    const itens = Array.isArray(parsed) ? parsed : (Array.isArray(parsed[campoLista]) ? parsed[campoLista] : []);
+    return { existe: true, sha: dados.sha, itens };
   }
 
-  async function gravarFicheiroRemoto(repo, pat, sha, pontosUnificados, qtdNovos) {
-    const url = construirUrlContents(repo, SYNC_PATH);
-    const conteudoJson = JSON.stringify(
-      {
-        versao: 1,
-        atualizado_em: new Date().toISOString(),
-        total: pontosUnificados.length,
-        pontos: pontosUnificados,
-      },
-      null,
-      2
-    );
+  async function gravarFicheiroRemoto(repo, pat, caminho, sha, dadosJsonObj, mensagemCommit, campoLista = 'pontos') {
+    const url = construirUrlContents(repo, caminho);
+    const conteudoJson = JSON.stringify(dadosJsonObj, null, 2);
 
     const payload = {
-      message: `Sincronização GPS Náutico (${qtdNovos} novo(s), ${pontosUnificados.length} total)`,
+      message: mensagemCommit,
       content: utf8ParaBase64(conteudoJson),
       branch: 'main',
     };
@@ -377,7 +405,7 @@
 
     if (!resp.ok) {
       if (resp.status === 409 && sha) {
-        const atualizado = await lerFicheiroRemoto(repo, pat);
+        const atualizado = await lerFicheiroRemoto(repo, pat, caminho, campoLista);
         const retryPayload = { ...payload };
         if (atualizado.sha) retryPayload.sha = atualizado.sha;
         else delete retryPayload.sha;
@@ -401,6 +429,150 @@
     return resp.json();
   }
 
+  async function sincronizarPontos(repo, pat, { silencioso = false, criarSeInexistente = false } = {}) {
+    const remoto = await lerFicheiroRemoto(repo, pat, SYNC_PATH, 'pontos');
+    const pontosRemotos = remoto.itens;
+    const chavesRemotas = new Set(pontosRemotos.map(chaveUnica).filter(Boolean));
+    const recebidos = integrarPontosRemotosLocalmente(pontosRemotos);
+
+    const locais = obterPontosManuaisLocais();
+    const paraEnviar = locais.filter((p) => !chavesRemotas.has(chaveUnica(p)));
+
+    const deveCriarInicial = !remoto.existe && (locais.length > 0 || criarSeInexistente || !silencioso);
+    if (paraEnviar.length > 0 || deveCriarInicial) {
+      const mapaUnificado = new Map();
+      [...locais, ...pontosRemotos].forEach((p) => {
+        const c = chaveUnica(p);
+        if (c && !mapaUnificado.has(c)) {
+          mapaUnificado.set(c, p);
+        }
+      });
+      const unificados = Array.from(mapaUnificado.values()).sort(
+        (a, b) => (Number(b.criadoEmTs) || 0) - (Number(a.criadoEmTs) || 0)
+      );
+      await gravarFicheiroRemoto(
+        repo,
+        pat,
+        SYNC_PATH,
+        remoto.sha,
+        {
+          versao: 1,
+          atualizado_em: new Date().toISOString(),
+          total: unificados.length,
+          pontos: unificados,
+        },
+        `Sincronização GPS Náutico (${paraEnviar.length} novo(s), ${unificados.length} total)`,
+        'pontos'
+      );
+    }
+
+    const enviadas = obterChavesEnviadas(KEY_ENVIADOS);
+    locais.forEach((p) => enviadas.add(chaveUnica(p)));
+    pontosRemotos.forEach((p) => {
+      const c = chaveUnica(p);
+      if (c) enviadas.add(c);
+    });
+    guardarChavesEnviadas(enviadas, KEY_ENVIADOS);
+
+    return { enviados: paraEnviar.length, recebidos };
+  }
+
+  function timestampRegistoDiario(r) {
+    if (!r || !r.atualizadoEm) return 0;
+    const ts = Date.parse(r.atualizadoEm);
+    return Number.isFinite(ts) ? ts : 0;
+  }
+
+  function ordenarRegistosDiario(lista) {
+    return lista.slice().sort((a, b) => `${b.data || ''} ${b.hora || ''}`.localeCompare(`${a.data || ''} ${a.hora || ''}`));
+  }
+
+  async function sincronizarDiario(repo, pat, { silencioso = false, criarSeInexistente = false } = {}) {
+    const remoto = await lerFicheiroRemoto(repo, pat, SYNC_DIARIO_PATH, 'registos');
+    const remotos = remoto.itens.filter((r) => r && typeof r === 'object');
+    const locais = obterRegistosDiarioLocais();
+
+    const mapaLocais = new Map();
+    for (const r of locais) {
+      const c = chaveUnicaDiario(r);
+      if (c && !mapaLocais.has(c)) mapaLocais.set(c, r);
+    }
+
+    const mapaRemotos = new Map();
+    for (const r of remotos) {
+      const c = chaveUnicaDiario(r);
+      if (c && !mapaRemotos.has(c)) mapaRemotos.set(c, r);
+    }
+
+    const mapaUnificado = new Map(mapaLocais);
+    let recebidos = 0;
+    let localAlterado = false;
+
+    for (const [c, rr] of mapaRemotos.entries()) {
+      const rl = mapaLocais.get(c);
+      if (!rl) {
+        mapaUnificado.set(c, rr);
+        recebidos++;
+        localAlterado = true;
+      } else if (timestampRegistoDiario(rr) > timestampRegistoDiario(rl)) {
+        mapaUnificado.set(c, rr);
+        localAlterado = true;
+      }
+    }
+
+    let paraEnviar = 0;
+    let remotoDesatualizado = false;
+    for (const [c, rl] of mapaLocais.entries()) {
+      const rr = mapaRemotos.get(c);
+      if (!rr) {
+        paraEnviar++;
+        remotoDesatualizado = true;
+      } else if (timestampRegistoDiario(rl) > timestampRegistoDiario(rr)) {
+        remotoDesatualizado = true;
+      }
+    }
+
+    const unificados = ordenarRegistosDiario(Array.from(mapaUnificado.values()));
+
+    if (localAlterado) {
+      try {
+        localStorage.setItem(STORAGE_DIARIO, JSON.stringify(unificados));
+        if (window.DiarioPesca && typeof window.DiarioPesca.recarregarLocal === 'function') {
+          window.DiarioPesca.recarregarLocal();
+        }
+      } catch (e) {
+        console.warn('Erro ao gravar Diário sincronizado no localStorage:', e);
+      }
+    }
+
+    const deveCriarInicial = !remoto.existe && (locais.length > 0 || criarSeInexistente || !silencioso);
+    if (remotoDesatualizado || deveCriarInicial) {
+      await gravarFicheiroRemoto(
+        repo,
+        pat,
+        SYNC_DIARIO_PATH,
+        remoto.sha,
+        {
+          versao: 1,
+          atualizado_em: new Date().toISOString(),
+          total: unificados.length,
+          registos: unificados,
+        },
+        `Sincronização Diário de Pesca (${paraEnviar} novo(s), ${unificados.length} total)`,
+        'registos'
+      );
+    }
+
+    const enviadosDiario = obterChavesEnviadas(KEY_DIARIO_ENVIADOS);
+    unificados.forEach((r) => {
+      const c = chaveUnicaDiario(r);
+      if (c) enviadosDiario.add(c);
+    });
+    guardarChavesEnviadas(enviadosDiario, KEY_DIARIO_ENVIADOS);
+
+    return { enviados: paraEnviar, recebidos };
+  }
+
   async function sincronizarAgora({ silencioso = false, criarSeInexistente = false } = {}) {
     const { repo, pat } = obterConfig();
     if (!pat) {
@@ -415,7 +587,7 @@
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       atualizarIndicadorUI();
       if (!silencioso) {
-        notificar('📡 Sem ligação à internet. Os pontos serão enviados automaticamente quando houver rede.');
+        notificar('📡 Sem ligação à internet. Os dados serão enviados automaticamente quando houver rede.');
       }
       return { sucesso: false, motivo: 'offline' };
     }
@@ -425,35 +597,8 @@
     atualizarIndicadorUI();
 
     try {
-      const remoto = await lerFicheiroRemoto(repo, pat);
-      const chavesRemotas = new Set(remoto.pontos.map(chaveUnica).filter(Boolean));
-      const recebidos = integrarPontosRemotosLocalmente(remoto.pontos);
-
-      const locais = obterPontosManuaisLocais();
-      const paraEnviar = locais.filter((p) => !chavesRemotas.has(chaveUnica(p)));
-
-      const deveCriarInicial = !remoto.existe && (locais.length > 0 || criarSeInexistente || !silencioso);
-      if (paraEnviar.length > 0 || deveCriarInicial) {
-        const mapaUnificado = new Map();
-        [...locais, ...remoto.pontos].forEach((p) => {
-          const c = chaveUnica(p);
-          if (c && !mapaUnificado.has(c)) {
-            mapaUnificado.set(c, p);
-          }
-        });
-        const unificados = Array.from(mapaUnificado.values()).sort(
-          (a, b) => (Number(b.criadoEmTs) || 0) - (Number(a.criadoEmTs) || 0)
-        );
-        await gravarFicheiroRemoto(repo, pat, remoto.sha, unificados, paraEnviar.length);
-      }
-
-      const enviadas = obterChavesEnviadas();
-      locais.forEach((p) => enviadas.add(chaveUnica(p)));
-      remoto.pontos.forEach((p) => {
-        const c = chaveUnica(p);
-        if (c) enviadas.add(c);
-      });
-      guardarChavesEnviadas(enviadas);
+      const resPontos = await sincronizarPontos(repo, pat, { silencioso, criarSeInexistente });
+      const resDiario = await sincronizarDiario(repo, pat, { silencioso, criarSeInexistente });
 
       try {
         const agora = new Date();
@@ -462,15 +607,26 @@
         localStorage.setItem(KEY_ULTIMA_SYNC, `${hh}:${mm}`);
       } catch (_) {}
 
-      if (!silencioso || recebidos > 0 || paraEnviar.length > 0) {
-        if (recebidos > 0 || paraEnviar.length > 0) {
-          notificar(`☁️ Sincronizado! ${paraEnviar.length} enviado(s), ${recebidos} recebido(s).`);
+      const totalEnviados = resPontos.enviados + resDiario.enviados;
+      const totalRecebidos = resPontos.recebidos + resDiario.recebidos;
+
+      if (!silencioso || totalRecebidos > 0 || totalEnviados > 0) {
+        if (totalRecebidos > 0 || totalEnviados > 0) {
+          notificar(
+            `☁️ Sincronizado! Pontos: +${resPontos.enviados}/↓${resPontos.recebidos} · Diário: +${resDiario.enviados}/↓${resDiario.recebidos}`
+          );
         } else if (!silencioso) {
-          notificar('✅ Tudo sincronizado com o GitHub.');
+          notificar('✅ Pontos e Diário sincronizados com o GitHub.');
         }
       }
 
-      return { sucesso: true, enviados: paraEnviar.length, recebidos };
+      return {
+        sucesso: true,
+        enviados: totalEnviados,
+        recebidos: totalRecebidos,
+        pontos: resPontos,
+        diario: resDiario,
+      };
     } catch (err) {
       console.warn('Erro na sincronização GitHub:', err);
       if (!silencioso) {
