@@ -1,7 +1,7 @@
 // Service Worker Offline-First para o GPS Náutico Independente
 // Funciona 100% no telemóvel mesmo com o computador desligado e sem internet no mar.
 
-const CACHE_NAME = 'gps-nautico-offline-v29';
+const CACHE_NAME = 'gps-nautico-offline-v30';
 const TILE_CACHE_NAME = 'gps-nautico-tiles-v1';
 
 const RECURSOS_ESSENCIAIS = [
@@ -15,6 +15,7 @@ const RECURSOS_ESSENCIAIS = [
   './static/meteorologia.js',
   './static/pasta_eventos.js',
   './static/diario_pesca.js',
+  './static/guia_montagens.js',
   './static/agente_pesca_ui.js',
   './static/backup_nautico.js',
   './static/sync_github.js',
@@ -129,6 +130,7 @@ self.addEventListener('fetch', (evento) => {
     url.pathname.endsWith('/aorus.js') ||
     url.pathname.endsWith('/meteorologia.js') ||
     url.pathname.endsWith('/diario_pesca.js') ||
+    url.pathname.endsWith('/guia_montagens.js') ||
     url.pathname.endsWith('/agente_pesca_ui.js') ||
     url.pathname.endsWith('/backup_nautico.js') ||
     url.pathname.endsWith('/sync_github.js') ||
