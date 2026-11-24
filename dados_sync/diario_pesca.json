@@ -1,6 +1,6 @@
 {
   "versao": 1,
-  "atualizado_em": "2026-11-24T08:04:23.538Z",
+  "atualizado_em": "2026-11-24T08:10:16.947Z",
   "total": 1,
   "registos": [
     {
@@ -10,8 +10,8 @@
       "faseLua": "Lua Cheia",
       "faseLuaEmoji": "🌕",
       "pesqueiro": "Pesqueiro no Mar",
-      "lat": 37.1327,
-      "lon": -8.50985,
+      "lat": 37.0593,
+      "lon": -8.39015,
       "especie": "Lula",
       "quantidade": "",
       "arte": "Toneiras/Palhaços",
@@ -25,7 +25,7 @@
       "qualidade": "boa",
       "lembrete": "",
       "lembreteData": "",
-      "atualizadoEm": "2026-11-23T09:26:35.030Z"
+      "atualizadoEm": "2026-11-24T08:10:14.281Z"
     }
   ]
 }
