@@ -293,6 +293,45 @@
     });
   }
 
+  function preencherMeteoFormulario(dataStr, horaStr) {
+    const statusEl = document.getElementById('diarioMeteoAutoStatus');
+    const api = window.MeteorologiaMaritima;
+    if (!api) {
+      if (statusEl) statusEl.textContent = '🌤️ Meteo indisponível';
+      return;
+    }
+
+    const meteo = typeof api.obterDadosParaDataHora === 'function'
+      ? api.obterDadosParaDataHora(dataStr, horaStr)
+      : api.obterDadosAtuais();
+
+    if (!meteo) {
+      if (statusEl) statusEl.textContent = '📴 Sem previsão em cache';
+      return;
+    }
+
+    document.getElementById('diarioInpMare').value = meteo.mare?.chipMare || 'Enchente';
+    document.getElementById('diarioInpVento').value = meteo.ventoTexto || '';
+    document.getElementById('diarioInpMar').value = meteo.estadoMarDiario || 'Chão';
+    document.getElementById('diarioInpAlturaVaga').value = meteo.vagaTexto || '';
+    const pressaoTxt = meteo.pressaoTexto
+      ? (meteo.tendenciaPressao ? `${meteo.pressaoTexto} (${meteo.tendenciaPressao})` : meteo.pressaoTexto)
+      : '';
+    document.getElementById('diarioInpPressao').value = pressaoTxt;
+    document.getElementById('diarioInpTempAgua').value = meteo.tempAguaTexto || '';
+
+    if (statusEl) {
+      if (meteo.modo === 'online') {
+        statusEl.textContent = '📡 Vento, vaga, pressão e maré preenchidos (Online)';
+      } else if (meteo.modo === 'offline') {
+        statusEl.textContent = '📴 Vento, vaga, pressão e maré preenchidos (Cache Offline)';
+      } else {
+        statusEl.textContent = '🌊 Maré de Lagos calculada offline (sem cache meteo)';
+      }
+    }
+    atualizarEstadoBotoesRapidos();
+  }
+
   function abrirFormularioNovo(registoExistente = null) {
     formularioAberto = true;
     idEdicao = registoExistente ? registoExistente.id : null;
@@ -306,10 +345,6 @@
     const horaDef = registoExistente?.hora || agora.toTimeString().slice(0, 5);
     const pos = obterPosicaoGpsAtual();
 
-    const meteo = !registoExistente && window.MeteorologiaMaritima
-      ? window.MeteorologiaMaritima.obterDadosAtuais()
-      : null;
-
     document.getElementById('diarioInpData').value = dataDef;
     document.getElementById('diarioInpHora').value = horaDef;
     document.getElementById('diarioInpPesqueiro').value = registoExistente?.pesqueiro || '';
@@ -320,16 +355,23 @@
     document.getElementById('diarioInpEspecie').value = registoExistente?.especie || '';
     document.getElementById('diarioInpQtd').value = registoExistente?.quantidade || '';
     document.getElementById('diarioInpArte').value = registoExistente?.arte || '';
-    document.getElementById('diarioInpMare').value = registoExistente?.mare || meteo?.mare?.chipMare || 'Enchente';
-    document.getElementById('diarioInpVento').value = registoExistente?.vento || meteo?.ventoTexto || '';
-    document.getElementById('diarioInpMar').value = registoExistente?.estadoMar || meteo?.estadoMarDiario || 'Chão';
-    document.getElementById('diarioInpAlturaVaga').value = registoExistente?.alturaVaga || meteo?.vagaTexto || '';
-    document.getElementById('diarioInpPressao').value = registoExistente?.pressao || meteo?.pressaoTexto || '';
     document.getElementById('diarioInpProf').value = registoExistente?.profundidade || '';
-    document.getElementById('diarioInpTempAgua').value = registoExistente?.tempAgua || meteo?.tempAguaTexto || '';
     document.getElementById('diarioInpQualidade').value = registoExistente?.qualidade || 'boa';
     document.getElementById('diarioInpLembrete').value = registoExistente?.lembrete || '';
     document.getElementById('diarioInpLembreteData').value = registoExistente?.lembreteData || '';
+
+    const statusEl = document.getElementById('diarioMeteoAutoStatus');
+    if (registoExistente) {
+      document.getElementById('diarioInpMare').value = registoExistente.mare || 'Enchente';
+      document.getElementById('diarioInpVento').value = registoExistente.vento || '';
+      document.getElementById('diarioInpMar').value = registoExistente.estadoMar || 'Chão';
+      document.getElementById('diarioInpAlturaVaga').value = registoExistente.alturaVaga || '';
+      document.getElementById('diarioInpPressao').value = registoExistente.pressao || '';
+      document.getElementById('diarioInpTempAgua').value = registoExistente.tempAgua || '';
+      if (statusEl) statusEl.textContent = '✏️ A editar registo existente';
+    } else {
+      preencherMeteoFormulario(dataDef, horaDef);
+    }
 
     atualizarEstadoBotoesRapidos();
     atualizarFaseLuaFormulario();
@@ -725,6 +767,10 @@
             </div>
           </div>
           <div class="diario-lua-pill">Fase da Lua: <b id="diarioLblLua">🌙 --</b></div>
+          <div id="diarioMeteoAutoBar" class="diario-meteo-auto-bar">
+            <span id="diarioMeteoAutoStatus">🌤️ Preenchimento automático</span>
+            <button type="button" id="btnDiarioAtualizarMeteo" class="diario-btn-mini" title="Atualizar vento, vaga, pressão e maré para esta data/hora">🔄 Meteo</button>
+          </div>
 
           <div>
             <label>Escolher Pesqueiro (Pasta de Eventos / GPX)</label>
@@ -863,7 +909,30 @@
     });
     document.getElementById('btnCancelarFormDiario').addEventListener('click', fecharFormulario);
     document.getElementById('btnGuardarRegistoDiario').addEventListener('click', guardarFormulario);
-    document.getElementById('diarioInpData').addEventListener('change', atualizarFaseLuaFormulario);
+    document.getElementById('diarioInpData').addEventListener('change', () => {
+      atualizarFaseLuaFormulario();
+      if (!idEdicao) {
+        preencherMeteoFormulario(
+          document.getElementById('diarioInpData').value,
+          document.getElementById('diarioInpHora').value
+        );
+      }
+    });
+    document.getElementById('diarioInpHora').addEventListener('change', () => {
+      if (!idEdicao) {
+        preencherMeteoFormulario(
+          document.getElementById('diarioInpData').value,
+          document.getElementById('diarioInpHora').value
+        );
+      }
+    });
+    document.getElementById('btnDiarioAtualizarMeteo')?.addEventListener('click', () => {
+      preencherMeteoFormulario(
+        document.getElementById('diarioInpData').value,
+        document.getElementById('diarioInpHora').value
+      );
+      notificar('🌤️ Condições meteorológicas e maré atualizadas no formulário.');
+    });
     document.getElementById('diarioPesquisa').addEventListener('input', (e) => {
       filtroTexto = e.target.value || '';
       renderizarLista();

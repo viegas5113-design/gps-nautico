@@ -233,6 +233,129 @@
     return { estado: estadoMare, chipMare, alturaRel, amplitude, fase };
   }
 
+  function calcularTabelaMaresDiaLagos(dataStr) {
+    const [ano, mes, dia] = (dataStr || new Date().toISOString().slice(0, 10)).split('-').map(Number);
+    const inicioDia = new Date(ano, (mes || 1) - 1, dia || 1, 0, 0, 0, 0);
+    const fimDia = new Date(ano, (mes || 1) - 1, dia || 1, 23, 59, 59, 999);
+    const meioDia = new Date(ano, (mes || 1) - 1, dia || 1, 12, 0, 0, 0);
+
+    const refPreamarLagos = Date.UTC(2026, 0, 3, 2, 30, 0);
+    const periodoM2Ms = 12.4206012 * 3600 * 1000;
+
+    const lua = calcularFaseLua(meioDia);
+    const coeficiente = Math.max(20, Math.min(120, Math.round(70 + 42 * Math.cos(4 * Math.PI * lua.fracao))));
+    const amplitudeTexto = coeficiente >= 80 ? 'Águas Vivas' : coeficiente < 50 ? 'Águas Mortas' : 'Média';
+    const ampFator = (coeficiente - 20) / 100;
+    const altPreamarM = (2.75 + 0.85 * ampFator).toFixed(2);
+    const altBaixamarM = (1.15 - 0.60 * ampFator).toFixed(2);
+
+    const inicioMs = inicioDia.getTime();
+    const fimMs = fimDia.getTime();
+    const kMin = Math.floor((inicioMs - refPreamarLagos) / periodoM2Ms) - 1;
+    const kMax = Math.ceil((fimMs - refPreamarLagos) / periodoM2Ms) + 1;
+
+    const eventos = [];
+    for (let k = kMin; k <= kMax; k++) {
+      const tPreamar = refPreamarLagos + k * periodoM2Ms;
+      if (tPreamar >= inicioMs && tPreamar <= fimMs) {
+        const dt = new Date(tPreamar);
+        eventos.push({
+          tipo: 'Preia-mar',
+          emoji: '⬆️',
+          hora: `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`,
+          alturaM: altPreamarM,
+          ts: tPreamar
+        });
+      }
+      const tBaixamar = refPreamarLagos + (k + 0.5) * periodoM2Ms;
+      if (tBaixamar >= inicioMs && tBaixamar <= fimMs) {
+        const dt = new Date(tBaixamar);
+        eventos.push({
+          tipo: 'Baixa-mar',
+          emoji: '⬇️',
+          hora: `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`,
+          alturaM: altBaixamarM,
+          ts: tBaixamar
+        });
+      }
+    }
+    eventos.sort((a, b) => a.ts - b.ts);
+
+    return {
+      data: dataStr,
+      coeficiente,
+      amplitudeTexto,
+      eventos
+    };
+  }
+
+  function calcularSemaforoSeguranca(hora) {
+    if (!hora) {
+      return {
+        nivel: 'amarelo',
+        emoji: '🟡',
+        rotulo: 'Sem dados',
+        titulo: 'Sem dados meteorológicos',
+        cor: '#f59e0b',
+        avisos: ['Atualize a previsão com internet para avaliar o mar.']
+      };
+    }
+
+    const vento = Number.isFinite(hora.ventoNos) ? hora.ventoNos : null;
+    const rajadas = Number.isFinite(hora.rajadasNos) ? hora.rajadasNos : null;
+    const vaga = Number.isFinite(hora.vaga) ? hora.vaga : null;
+    const periodo = Number.isFinite(hora.periodoOnda) ? hora.periodoOnda : null;
+
+    const avisosVermelho = [];
+    const avisosAmarelo = [];
+
+    if (vento !== null) {
+      if (vento > 15) avisosVermelho.push(`Vento forte (${vento} kt > 15 kt)`);
+      else if (vento >= 11) avisosAmarelo.push(`Vento moderado (${vento} kt)`);
+    }
+    if (rajadas !== null) {
+      if (rajadas > 22) avisosVermelho.push(`Rajadas fortes (${rajadas} kt)`);
+      else if (rajadas >= 16) avisosAmarelo.push(`Rajadas (${rajadas} kt)`);
+    }
+    if (vaga !== null) {
+      if (vaga > 1.5) avisosVermelho.push(`Ondulação acima de 1,5 m (${vaga} m)`);
+      else if (vaga >= 1.0) avisosAmarelo.push(`Ondulação moderada (${vaga} m)`);
+    }
+    if (periodo !== null) {
+      if (periodo < 5.5) avisosVermelho.push(`Período muito curto (${periodo} s — mar picado)`);
+      else if (periodo < 7.5) avisosAmarelo.push(`Período curto (${periodo} s)`);
+    }
+
+    if (avisosVermelho.length > 0) {
+      return {
+        nivel: 'vermelho',
+        emoji: '🔴',
+        rotulo: 'PERIGO',
+        titulo: 'PERIGO — Desaconselhado a barco pequeno',
+        cor: '#ef4444',
+        avisos: avisosVermelho.concat(avisosAmarelo)
+      };
+    }
+    if (avisosAmarelo.length > 0) {
+      return {
+        nivel: 'amarelo',
+        emoji: '🟡',
+        rotulo: 'ATENÇÃO',
+        titulo: 'ATENÇÃO — Precaução para barco pequeno',
+        cor: '#f59e0b',
+        avisos: avisosAmarelo
+      };
+    }
+    return {
+      nivel: 'verde',
+      emoji: '🟢',
+      rotulo: 'SEGURO',
+      titulo: 'SEGURO — Condições favoráveis a barco pequeno',
+      cor: '#10b981',
+      avisos: ['Vento ≤ 10 kt, ondulação < 1,0 m e período confortável.']
+    };
+  }
+
   function obterNascerPorSolDia(dataStr, dias, lat, lon) {
     const diaObj = Array.isArray(dias) ? dias.find((d) => d.data === dataStr) : null;
     if (diaObj && diaObj.sunrise && diaObj.sunset) {
@@ -317,21 +440,31 @@
     // 4. Pressão Atmosférica & Período da Onda
     const pAtual = horaObj.pressao;
     const pAnt = idx >= 3 ? horasLista[idx - 3]?.pressao : pAtual;
-    let tendenciaPressao = 'Estável';
+    let tendenciaPressao = '➡️ Estável';
+    let tendenciaPressaoClasse = 'estavel';
     if (Number.isFinite(pAtual) && Number.isFinite(pAnt)) {
       const deltaP = pAtual - pAnt;
-      if (Math.abs(deltaP) <= 1.5 && pAtual >= 1008 && pAtual <= 1026) {
-        pontos += 14;
-        tendenciaPressao = 'Estável';
-      } else if (deltaP < -3.0) {
+      if (deltaP <= -3.0) {
         pontos += 2;
-        tendenciaPressao = 'A descer rápido';
-      } else if (deltaP > 0) {
-        pontos += 9;
-        tendenciaPressao = 'A subir';
-      } else {
+        tendenciaPressao = '⬇️ A descer depressa';
+        tendenciaPressaoClasse = 'descer-depressa';
+      } else if (deltaP < -1.0) {
         pontos += 8;
-        tendenciaPressao = 'Ligeira descida';
+        tendenciaPressao = '↘️ A descer';
+        tendenciaPressaoClasse = 'descer';
+      } else if (deltaP >= 2.5) {
+        pontos += 9;
+        tendenciaPressao = '⬆️ A subir depressa';
+        tendenciaPressaoClasse = 'subir';
+      } else if (deltaP > 1.0) {
+        pontos += 10;
+        tendenciaPressao = '↗️ A subir';
+        tendenciaPressaoClasse = 'subir';
+      } else {
+        if (pAtual >= 1008 && pAtual <= 1026) pontos += 14;
+        else pontos += 10;
+        tendenciaPressao = '➡️ Estável';
+        tendenciaPressaoClasse = 'estavel';
       }
     }
 
@@ -367,7 +500,8 @@
       lua,
       solunar,
       sol,
-      tendenciaPressao
+      tendenciaPressao,
+      tendenciaPressaoClasse
     };
   }
 
@@ -527,7 +661,8 @@
       estado.cache.lat || LAGOS_PADRAO.lat,
       estado.cache.lon || LAGOS_PADRAO.lon
     );
-    return { hora, pesca, idx };
+    const semaforo = calcularSemaforoSeguranca(hora);
+    return { hora, pesca, semaforo, idx };
   }
 
   function obterMelhoresJanelasDia(dataStr) {
@@ -587,7 +722,8 @@
       return;
     }
 
-    const { hora } = atual;
+    const { hora, semaforo } = atual;
+    const sem = semaforo || calcularSemaforoSeguranca(hora);
     // O vento sopra DE ventoDir, logo empurra/abate o barco PARA (ventoDir + 180)
     const rotAbatimento = Number.isFinite(hora.ventoDir) ? (hora.ventoDir + 180) % 360 : 0;
     const cardeal = grausParaCardeal(hora.ventoDir);
@@ -607,7 +743,7 @@
         </svg>
       </div>
       <div class="meteo-seta-info">
-        <div class="meteo-seta-vento">💨 ${hora.ventoNos ?? '--'}kt ${cardeal}</div>
+        <div class="meteo-seta-vento">${sem.emoji} 💨 ${hora.ventoNos ?? '--'}kt ${cardeal}</div>
         <div class="meteo-seta-sub">${escaparHtml(nomeLocal)} · ${hora.vaga ?? '--'}m ${hora.periodoOnda ?? '--'}s</div>
       </div>
     `;
@@ -623,10 +759,11 @@
       btn.innerHTML = `🌤️ Meteo`;
       return;
     }
-    const { hora, pesca } = atual;
+    const { hora, pesca, semaforo } = atual;
+    const sem = semaforo || calcularSemaforoSeguranca(hora);
     const vTxt = hora.ventoNos != null ? `${Math.round(hora.ventoNos)}kt` : '--kt';
     const oTxt = hora.vaga != null ? `${hora.vaga}m/${hora.periodoOnda ?? '-'}s` : '--m';
-    btn.innerHTML = `🌤️ ${vTxt} · ${oTxt} · <span style="color:${pesca.cor};">🎣 ${pesca.indice}%</span>`;
+    btn.innerHTML = `${sem.emoji} ${vTxt} · ${oTxt} · <span style="color:${pesca.cor};">🎣 ${pesca.indice}%</span>`;
   }
 
   function atualizarBotaoRefresh(aCarregar) {
@@ -707,6 +844,7 @@
     if (!itemSel) itemSel = atual || obterDadosHora(horasDia[0]?.idx ?? 0);
 
     const { hora, pesca } = itemSel;
+    const semaforo = itemSel.semaforo || calcularSemaforoSeguranca(hora);
     const cardealVento = grausParaCardeal(hora.ventoDir);
     const nomeVento = obterNomeVentoLocal(hora.ventoDir);
     const cardealOnda = grausParaCardeal(hora.ondaDir);
@@ -716,6 +854,40 @@
     const solNascerTxt = `${String(Math.floor(pesca.sol.nascerH)).padStart(2, '0')}:${String(Math.round((pesca.sol.nascerH % 1) * 60) % 60).padStart(2, '0')}`;
     const solPorTxt = `${String(Math.floor(pesca.sol.porH)).padStart(2, '0')}:${String(Math.round((pesca.sol.porH % 1) * 60) % 60).padStart(2, '0')}`;
     const transitoTxt = `${String(Math.floor(pesca.solunar.transitoH)).padStart(2, '0')}:${String(Math.round((pesca.solunar.transitoH % 1) * 60) % 60).padStart(2, '0')}`;
+
+    const tabelaMares = calcularTabelaMaresDiaLagos(diaAtivoStr);
+    const mareEventosHtml = tabelaMares.eventos.map((ev) => `
+      <div class="meteo-mare-evento ${ev.tipo === 'Preia-mar' ? 'preiamar' : 'baixamar'}">
+        <span class="meteo-mare-tipo">${ev.emoji} ${ev.tipo}</span>
+        <span class="meteo-mare-hora">${ev.hora}</span>
+        <span class="meteo-mare-alt">${ev.alturaM} m</span>
+      </div>
+    `).join('');
+
+    const horas3h = horasDia.filter(({ h }) => {
+      const hh = parseInt(h.time.slice(11, 13), 10);
+      return Number.isFinite(hh) && hh % 3 === 0;
+    });
+    const manha3h = horas3h.filter(({ h }) => parseInt(h.time.slice(11, 13), 10) <= 12);
+    const tarde3h = horas3h.filter(({ h }) => parseInt(h.time.slice(11, 13), 10) >= 15);
+
+    const renderizarBloco3h = (lista) => lista.map(({ h }) => {
+      const semH = calcularSemaforoSeguranca(h);
+      const selecionado = h.time === hora.time;
+      const cardV = grausParaCardeal(h.ventoDir);
+      return `
+        <button type="button" class="meteo-3h-item ${selecionado ? 'ativo' : ''}" data-iso="${h.time}">
+          <span class="meteo-3h-hora">${semH.emoji} ${h.time.slice(11, 16)}</span>
+          <span class="meteo-3h-vento">💨 ${h.ventoNos ?? '--'}kt ${cardV}</span>
+          <span class="meteo-3h-vaga">🌊 ${h.vaga ?? '--'}m/${h.periodoOnda ?? '-'}s</span>
+        </button>
+      `;
+    }).join('');
+
+    const cacheDt = estado.cache.atualizadoEm ? new Date(estado.cache.atualizadoEm) : null;
+    const cacheTxt = cacheDt && !isNaN(cacheDt)
+      ? `${String(cacheDt.getDate()).padStart(2, '0')}/${String(cacheDt.getMonth() + 1).padStart(2, '0')} ${String(cacheDt.getHours()).padStart(2, '0')}:${String(cacheDt.getMinutes()).padStart(2, '0')}`
+      : '--';
 
     const janelasHtml = janelasHoje.length
       ? janelasHoje.map((j) => `
@@ -760,7 +932,50 @@
     corpo.innerHTML = `
       <div class="meteo-local-bar">
         <span>📍 ${escaparHtml(estado.cache.origemNome || 'Lagos')} (${Number(estado.cache.lat).toFixed(2)}°N, ${Number(estado.cache.lon).toFixed(2)}°W)</span>
-        <span>${pesca.lua.emoji} ${escaparHtml(pesca.lua.nome)}</span>
+        <span>${pesca.lua.emoji} ${escaparHtml(pesca.lua.nome)} · 💾 ${cacheTxt}</span>
+      </div>
+
+      <!-- 1) SEMÁFORO DE SEGURANÇA PARA BARCO PEQUENO -->
+      <div class="meteo-semaforo-card ${semaforo.nivel}">
+        <div class="meteo-semaforo-head">
+          <span class="meteo-semaforo-luz">${semaforo.emoji}</span>
+          <div>
+            <div class="meteo-semaforo-titulo">${escaparHtml(semaforo.titulo)}</div>
+            <div class="meteo-semaforo-sub">${dataTxt} · ${horaTxt} · Barco Pequeno</div>
+          </div>
+        </div>
+        <div class="meteo-semaforo-avisos">
+          ${semaforo.avisos.map((a) => `<span>• ${escaparHtml(a)}</span>`).join('')}
+        </div>
+      </div>
+
+      <!-- SELETOR DE DIAS -->
+      <div class="meteo-secao">
+        <div class="meteo-dias-tabs">${diasTabsHtml}</div>
+      </div>
+
+      <!-- 2) PREVISÃO 3 EM 3 HORAS (MANHÃ VS. TARDE) PARA LAGOS -->
+      <div class="meteo-secao">
+        <div class="meteo-sec-titulo">🕒 Previsão 3 em 3h · Lagos (Manhã vs. Tarde)</div>
+        <div class="meteo-3h-grid">
+          <div class="meteo-3h-col">
+            <div class="meteo-3h-col-titulo">🌅 Manhã (00h–12h)</div>
+            <div class="meteo-3h-lista">${renderizarBloco3h(manha3h)}</div>
+          </div>
+          <div class="meteo-3h-col">
+            <div class="meteo-3h-col-titulo">🌇 Tarde (15h–21h)</div>
+            <div class="meteo-3h-lista">${renderizarBloco3h(tarde3h)}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3) TABELA DE MARÉS DE LAGOS -->
+      <div class="meteo-mares-card">
+        <div class="meteo-mares-head">
+          <span class="meteo-sec-titulo" style="margin:0;">🌊 Marés de Lagos</span>
+          <span class="meteo-mare-estado-badge ${pesca.mare.chipMare.toLowerCase()}">${escaparHtml(pesca.mare.estado)} · Coef. ${tabelaMares.coeficiente} (${tabelaMares.amplitudeTexto})</span>
+        </div>
+        <div class="meteo-mares-tabela">${mareEventosHtml}</div>
       </div>
 
       <!-- MELHORES JANELAS DE PESCA HOJE -->
@@ -769,10 +984,9 @@
         <div class="meteo-janelas-grid">${janelasHtml}</div>
       </div>
 
-      <!-- SELETOR DE DIAS & LINHA TEMPORAL -->
+      <!-- LINHA TEMPORAL HORÁRIA -->
       <div class="meteo-secao">
-        <div class="meteo-sec-titulo">🎣 Melhores Horas para o Peixe Morder</div>
-        <div class="meteo-dias-tabs">${diasTabsHtml}</div>
+        <div class="meteo-sec-titulo">🎣 Hora a Hora (Atividade do Peixe)</div>
         <div class="meteo-timeline">${timelineHtml}</div>
       </div>
 
@@ -807,12 +1021,12 @@
           <div class="meteo-dado-box">
             <span class="meteo-dado-lbl">🌡️ Água &amp; Pressão</span>
             <span class="meteo-dado-val">${hora.tempAgua ?? '--'} °C · ${hora.pressao ?? '--'} hPa</span>
-            <span class="meteo-dado-sub">Pressão: ${pesca.tendenciaPressao}</span>
+            <span class="meteo-dado-sub meteo-pressao-tendencia ${pesca.tendenciaPressaoClasse || 'estavel'}">Pressão: ${escaparHtml(pesca.tendenciaPressao)}</span>
           </div>
         </div>
 
         <div class="meteo-fatores-pesca">
-          <div>🌊 <b>Maré (Lagos):</b> ${escaparHtml(pesca.mare.estado)} (${pesca.mare.amplitude})</div>
+          <div>🌊 <b>Maré (Lagos):</b> ${escaparHtml(pesca.mare.estado)} (${pesca.mare.amplitude} · Coef. ${tabelaMares.coeficiente})</div>
           <div>🌅 <b>Horas de Ouro:</b> Amanhecer ${solNascerTxt} · Anoitecer ${solPorTxt}</div>
           <div>🌙 <b>Solunar:</b> Trânsito Lunar ${transitoTxt} · ${escaparHtml(pesca.resumoMotivo)}</div>
         </div>
@@ -830,7 +1044,7 @@
       });
     });
 
-    corpo.querySelectorAll('.meteo-hora-chip, .meteo-janela-card').forEach((btn) => {
+    corpo.querySelectorAll('.meteo-hora-chip, .meteo-janela-card, .meteo-3h-item').forEach((btn) => {
       btn.addEventListener('click', () => {
         const iso = btn.dataset.iso;
         if (!iso) return;
@@ -869,10 +1083,9 @@
   // ==========================================
   // API PÚBLICA PARA DIÁRIO & IA PESCA
   // ==========================================
-  function obterDadosAtuais() {
-    const idxAtual = obterIndiceHoraAtual();
-    if (idxAtual < 0) return null;
-    const { hora, pesca } = obterDadosHora(idxAtual);
+  function formatarDadosParaDiario(dadosHora) {
+    if (!dadosHora) return null;
+    const { hora, pesca, semaforo } = dadosHora;
     const cardeal = grausParaCardeal(hora.ventoDir);
     const nomeLocal = obterNomeVentoLocal(hora.ventoDir);
 
@@ -906,9 +1119,59 @@
       tempAguaTexto: hora.tempAgua != null ? `${hora.tempAgua} °C` : '',
       mare: pesca.mare,
       lua: pesca.lua,
+      semaforo: semaforo || calcularSemaforoSeguranca(hora),
       indicePesca: pesca.indice,
       nivelPesca: pesca.nivel,
       resumoMotivo: pesca.resumoMotivo
+    };
+  }
+
+  function obterDadosAtuais() {
+    const idxAtual = obterIndiceHoraAtual();
+    if (idxAtual < 0) return null;
+    return formatarDadosParaDiario(obterDadosHora(idxAtual));
+  }
+
+  function obterDadosParaDataHora(dataStr, horaStr) {
+    const dStr = dataStr || new Date().toISOString().slice(0, 10);
+    const hStr = (horaStr || '12:00').slice(0, 2);
+    const isoAlvo = `${dStr}T${hStr}:00`;
+
+    if (estado.cache?.horas?.length) {
+      let idx = estado.cache.horas.findIndex((h) => h.time === isoAlvo);
+      if (idx < 0) {
+        const horasMesmoDia = estado.cache.horas
+          .map((h, i) => ({ h, i }))
+          .filter((item) => item.h.time.startsWith(dStr));
+        if (horasMesmoDia.length > 0) {
+          const hNum = parseInt(hStr, 10) || 12;
+          horasMesmoDia.sort((a, b) =>
+            Math.abs(parseInt(a.h.time.slice(11, 13), 10) - hNum) -
+            Math.abs(parseInt(b.h.time.slice(11, 13), 10) - hNum)
+          );
+          idx = horasMesmoDia[0].i;
+        }
+      }
+      if (idx >= 0) {
+        return formatarDadosParaDiario(obterDadosHora(idx));
+      }
+    }
+
+    // Fallback 100% offline para maré e lua mesmo sem cache meteorológico para a data
+    const dt = new Date(`${dStr}T${(horaStr || '12:00').slice(0, 5)}:00`);
+    const dtValida = isNaN(dt.getTime()) ? new Date() : dt;
+    return {
+      modo: 'sem-dados',
+      horaIso: isoAlvo,
+      ventoTexto: '',
+      vagaTexto: '',
+      estadoMarDiario: 'Chão',
+      pressaoTexto: '',
+      tendenciaPressao: '',
+      tempAguaTexto: '',
+      mare: calcularMareLagos(dtValida),
+      lua: calcularFaseLua(dtValida),
+      semaforo: null
     };
   }
 
@@ -965,13 +1228,23 @@
 
     // Atualizar em segundo plano se houver internet
     descarregarPrevisaoOpenMeteo(false);
-    setInterval(() => descarregarPrevisaoOpenMeteo(false), INTERVALO_AUTO_ATUALIZAR_MS);
+    setInterval(() => {
+      if (navigator.onLine) descarregarPrevisaoOpenMeteo(false);
+    }, INTERVALO_AUTO_ATUALIZAR_MS);
 
-    window.addEventListener('online', () => descarregarPrevisaoOpenMeteo(false));
+    window.addEventListener('online', () => descarregarPrevisaoOpenMeteo(true));
     window.addEventListener('offline', () => {
       if (estado.cache) {
         estado.modo = 'offline';
         renderizarTudo();
+      }
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && navigator.onLine) {
+        const ultimoTs = estado.cache?.atualizadoEm ? new Date(estado.cache.atualizadoEm).getTime() : 0;
+        if (!ultimoTs || Date.now() - ultimoTs > INTERVALO_AUTO_ATUALIZAR_MS) {
+          descarregarPrevisaoOpenMeteo(false);
+        }
       }
     });
   }
@@ -980,6 +1253,7 @@
     alternarPainel,
     atualizar: descarregarPrevisaoOpenMeteo,
     obterDadosAtuais,
+    obterDadosParaDataHora,
     obterResumoParaIA
   };
 
