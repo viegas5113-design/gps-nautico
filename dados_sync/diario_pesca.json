@@ -1,0 +1,31 @@
+{
+  "versao": 1,
+  "atualizado_em": "2026-11-24T08:04:23.538Z",
+  "total": 1,
+  "registos": [
+    {
+      "id": "diario_1795425995030_7in0t",
+      "data": "2026-11-22",
+      "hora": "21:20",
+      "faseLua": "Lua Cheia",
+      "faseLuaEmoji": "🌕",
+      "pesqueiro": "Pesqueiro no Mar",
+      "lat": 37.1327,
+      "lon": -8.50985,
+      "especie": "Lula",
+      "quantidade": "",
+      "arte": "Toneiras/Palhaços",
+      "mare": "Enchente",
+      "vento": "2.1 kt NE (Nordeste)",
+      "estadoMar": "Marezia",
+      "alturaVaga": "0.4 m (7.4s)",
+      "pressao": "1023 hPa",
+      "profundidade": "8B",
+      "tempAgua": "17.2 °C",
+      "qualidade": "boa",
+      "lembrete": "",
+      "lembreteData": "",
+      "atualizadoEm": "2026-11-23T09:26:35.030Z"
+    }
+  ]
+}
