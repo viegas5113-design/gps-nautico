@@ -1,6 +1,6 @@
 {
   "versao": 1,
-  "atualizado_em": "2026-11-25T21:47:34.384Z",
+  "atualizado_em": "2026-11-25T21:50:46.472Z",
   "total": 5,
   "registos": [
     {
@@ -9,9 +9,9 @@
       "hora": "21:43",
       "faseLua": "Lua Cheia",
       "faseLuaEmoji": "🌕",
-      "pesqueiro": "Hotel Rosa",
-      "lat": 37.10435,
-      "lon": -8.68175,
+      "pesqueiro": "MOb hotel 🏩 3805",
+      "lat": 37.09884,
+      "lon": -8.65025,
       "especie": "Lula",
       "quantidade": "4,5kg",
       "arte": "Toneiras/Palhaços",
@@ -25,7 +25,7 @@
       "qualidade": "normal",
       "lembrete": "Voltar nesta altura de lua.",
       "lembreteData": "",
-      "atualizadoEm": "2026-11-25T21:47:31.126Z"
+      "atualizadoEm": "2026-11-25T21:50:43.647Z"
     },
     {
       "id": "diario_1795600933753_3c1ss",
