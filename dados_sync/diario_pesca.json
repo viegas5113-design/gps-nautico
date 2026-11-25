@@ -1,12 +1,12 @@
 {
   "versao": 1,
-  "atualizado_em": "2026-11-25T10:02:16.273Z",
+  "atualizado_em": "2026-11-25T10:03:44.430Z",
   "total": 4,
   "registos": [
     {
       "id": "diario_1795600933753_3c1ss",
-      "data": "2026-11-25",
-      "hora": "09:59",
+      "data": "2026-11-24",
+      "hora": "21:00",
       "faseLua": "Lua Cheia",
       "faseLuaEmoji": "🌕",
       "pesqueiro": "Hotel Rosa",
@@ -25,7 +25,7 @@
       "qualidade": "fraca",
       "lembrete": "",
       "lembreteData": "",
-      "atualizadoEm": "2026-11-25T10:02:13.753Z"
+      "atualizadoEm": "2026-11-25T10:03:41.852Z"
     },
     {
       "id": "diario_1795461673205_lofub",
