@@ -1958,6 +1958,24 @@ html, body {
   min-height: 46px;
 }
 
+.opcoes-ponto-coords-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.opcoes-ponto-icone-cor-grid {
+  display: grid;
+  grid-template-columns: 1fr 86px;
+  gap: 8px;
+}
+
+.opcoes-ponto-color {
+  height: 36px;
+  padding: 3px 5px;
+  cursor: pointer;
+}
+
 .opcoes-ponto-tipos {
   display: grid;
   grid-template-columns: 1fr 1fr;

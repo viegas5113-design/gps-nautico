@@ -318,10 +318,53 @@
     if (!Number.isFinite(num)) return '--';
     const dir = isLat ? (num >= 0 ? 'N' : 'S') : (num >= 0 ? 'E' : 'W');
     const abs = Math.abs(num);
-    const graus = Math.floor(abs);
-    const mins = ((abs - graus) * 60).toFixed(3).padStart(6, '0');
+    let graus = Math.floor(abs);
+    let minsNum = (abs - graus) * 60;
+    if (minsNum >= 59.9995) {
+      graus += 1;
+      minsNum = 0;
+    }
+    const mins = minsNum.toFixed(3).padStart(6, '0');
     const gPad = isLat ? String(graus).padStart(2, '0') : String(graus).padStart(3, '0');
     return `${gPad}° ${mins}' ${dir}`;
+  }
+
+  function parseCoordenadaNautica(texto, isLat) {
+    if (texto === null || texto === undefined) return NaN;
+    let s = String(texto).trim().toUpperCase();
+    if (!s) return NaN;
+    s = s.replace(/,/g, '.');
+
+    let sinal = 1;
+    const temNegativo = s.startsWith('-') || /\b[SWO]\b|[SWO]$/.test(s);
+    const temPositivo = /\b[NE]\b|[NE]$/.test(s);
+    if (temNegativo && !temPositivo) sinal = -1;
+
+    const nums = s.replace(/[-+]/g, ' ').match(/\d+(?:\.\d+)?/g);
+    if (!nums || nums.length === 0) return NaN;
+
+    let resultado = NaN;
+    if (nums.length === 1) {
+      resultado = Number(nums[0]);
+    } else if (nums.length === 2) {
+      const graus = Number(nums[0]);
+      const mins = Number(nums[1]);
+      if (!Number.isFinite(graus) || !Number.isFinite(mins) || mins < 0 || mins >= 60) return NaN;
+      resultado = graus + mins / 60;
+    } else {
+      const graus = Number(nums[0]);
+      const mins = Number(nums[1]);
+      const segs = Number(nums[2]);
+      if (!Number.isFinite(graus) || !Number.isFinite(mins) || !Number.isFinite(segs) || mins < 0 || mins >= 60 || segs < 0 || segs >= 60) return NaN;
+      resultado = graus + mins / 60 + segs / 3600;
+    }
+
+    if (!Number.isFinite(resultado)) return NaN;
+    resultado = sinal * resultado;
+
+    const limite = isLat ? 90 : 180;
+    if (resultado < -limite || resultado > limite) return NaN;
+    return resultado;
   }
 
   function notificarPonto(msg) {
@@ -334,17 +377,85 @@
     }
   }
 
-  window.selecionarTipoOpcoesPonto = function selecionarTipoOpcoesPonto(tipo) {
+  window.selecionarTipoOpcoesPonto = function selecionarTipoOpcoesPonto(tipo, preservarCustom) {
     if (!TIPOS_MARCA[tipo]) return;
     tipoOpcoesSelecionado = tipo;
     document.querySelectorAll('.opcoes-tipo-btn').forEach((btn) => {
       btn.classList.toggle('ativo', btn.dataset.tipo === tipo);
     });
-    const badge = document.getElementById('opcoesPontoTipoBadge');
-    if (badge) {
-      const info = TIPOS_MARCA[tipo];
-      badge.textContent = `${info.icone} ${info.nome}`;
+    const info = TIPOS_MARCA[tipo];
+    if (!preservarCustom) {
+      const selIcone = document.getElementById('opcoesPontoIcone');
+      const inpCor = document.getElementById('opcoesPontoCor');
+      if (selIcone) selIcone.value = info.icone;
+      if (inpCor) inpCor.value = info.cor;
     }
+    window.atualizarBadgeEdicaoMarca();
+  };
+
+  window.atualizarBadgeEdicaoMarca = function atualizarBadgeEdicaoMarca() {
+    const badge = document.getElementById('opcoesPontoTipoBadge');
+    if (!badge) return;
+    const info = TIPOS_MARCA[tipoOpcoesSelecionado] || TIPOS_MARCA.geral;
+    const selIcone = document.getElementById('opcoesPontoIcone');
+    const icone = (selIcone && selIcone.value) ? selIcone.value : info.icone;
+    badge.textContent = `${icone} ${info.nome}`;
+  };
+
+  window.atualizarPreviewCoordsEdicao = function atualizarPreviewCoordsEdicao() {
+    const inpLat = document.getElementById('opcoesPontoLat');
+    const inpLon = document.getElementById('opcoesPontoLon');
+    const coordsNautEl = document.getElementById('opcoesPontoCoordsNaut');
+    const coordsDecEl = document.getElementById('opcoesPontoCoordsDec');
+    const lat = inpLat ? parseCoordenadaNautica(inpLat.value, true) : NaN;
+    const lon = inpLon ? parseCoordenadaNautica(inpLon.value, false) : NaN;
+    if (Number.isFinite(lat) && Number.isFinite(lon)) {
+      if (coordsNautEl) coordsNautEl.textContent = `${formatarCoordGrausMin(lat, true)} · ${formatarCoordGrausMin(lon, false)}`;
+      if (coordsDecEl) coordsDecEl.textContent = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+    } else {
+      if (coordsNautEl) coordsNautEl.textContent = '--';
+      if (coordsDecEl) coordsDecEl.textContent = '--';
+    }
+  };
+
+  function popularSelectMarcasEdicao(idSelecionado) {
+    const sel = document.getElementById('opcoesPontoSelect');
+    if (!sel) return;
+    const lista = obterListaUnificada();
+    sel.innerHTML = '';
+    if (lista.length === 0) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = 'Nenhuma marca guardada';
+      sel.appendChild(opt);
+      return;
+    }
+    for (const item of lista) {
+      const info = TIPOS_MARCA[item.tipo] || TIPOS_MARCA.geral;
+      const icone = item.simbolo || (item.sym && Array.from(String(item.sym)).length <= 3 ? item.sym : info.icone);
+      const opt = document.createElement('option');
+      opt.value = String(item.id);
+      opt.textContent = `${icone} ${item.nome}`;
+      sel.appendChild(opt);
+    }
+    if (idSelecionado !== undefined && idSelecionado !== null) {
+      sel.value = String(idSelecionado);
+    }
+  }
+
+  window.abrirPainelAlterarMarca = function abrirPainelAlterarMarca(idPreferido) {
+    const lista = obterListaUnificada();
+    if (lista.length === 0) {
+      notificarPonto('ℹ️ Ainda não há marcas guardadas para alterar.');
+      return;
+    }
+    const idAlvo = idPreferido || lista[0].id;
+    window.abrirOpcoesPonto(idAlvo);
+  };
+
+  window.selecionarMarcaEdicaoPorId = function selecionarMarcaEdicaoPorId(id) {
+    if (!id) return;
+    window.abrirOpcoesPonto(id);
   };
 
   window.cancelarConfirmacaoApagarPonto = function cancelarConfirmacaoApagarPonto() {
@@ -384,23 +495,43 @@
     if (!ev || !modal) return;
 
     pontoOpcoesAtivoId = ev.id;
+    popularSelectMarcasEdicao(ev.id);
+
     const lat = Number(ev.lat);
     const lon = Number(ev.lon);
-    const coordsNautEl = document.getElementById('opcoesPontoCoordsNaut');
-    const coordsDecEl = document.getElementById('opcoesPontoCoordsDec');
     const inpNome = document.getElementById('opcoesPontoNome');
+    const inpLat = document.getElementById('opcoesPontoLat');
+    const inpLon = document.getElementById('opcoesPontoLon');
     const inpNota = document.getElementById('opcoesPontoNota');
+    const selIcone = document.getElementById('opcoesPontoIcone');
+    const inpCor = document.getElementById('opcoesPontoCor');
 
-    if (coordsNautEl) {
-      coordsNautEl.textContent = `${formatarCoordGrausMin(lat, true)} · ${formatarCoordGrausMin(lon, false)}`;
-    }
-    if (coordsDecEl) {
-      coordsDecEl.textContent = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
-    }
     if (inpNome) inpNome.value = ev.nome || '';
-    if (inpNota) inpNota.value = ev.nota || '';
+    if (inpLat) inpLat.value = Number.isFinite(lat) ? formatarCoordGrausMin(lat, true) : '';
+    if (inpLon) inpLon.value = Number.isFinite(lon) ? formatarCoordGrausMin(lon, false) : '';
+    if (inpNota) inpNota.value = ev.nota || ev.desc || '';
 
-    window.selecionarTipoOpcoesPonto(TIPOS_MARCA[ev.tipo] ? ev.tipo : 'geral');
+    const tipoChave = TIPOS_MARCA[ev.tipo] ? ev.tipo : 'geral';
+    const info = TIPOS_MARCA[tipoChave];
+    const iconeAtual = ev.simbolo || (ev.sym && Array.from(String(ev.sym)).length <= 3 ? ev.sym : info.icone);
+    const corAtual = ev.cor || info.cor;
+
+    if (selIcone) {
+      const existeOpcao = Array.from(selIcone.options).some((o) => o.value === iconeAtual);
+      if (!existeOpcao && iconeAtual) {
+        const opt = document.createElement('option');
+        opt.value = iconeAtual;
+        opt.textContent = `${iconeAtual} Personalizado`;
+        selIcone.appendChild(opt);
+      }
+      selIcone.value = iconeAtual;
+    }
+    if (inpCor) {
+      inpCor.value = /^#[0-9a-f]{6}$/i.test(String(corAtual)) ? corAtual : info.cor;
+    }
+
+    window.selecionarTipoOpcoesPonto(tipoChave, true);
+    window.atualizarPreviewCoordsEdicao();
     window.cancelarConfirmacaoApagarPonto();
     modal.style.display = 'flex';
   };
@@ -421,10 +552,14 @@
       );
     }
     if (!ev && Number.isFinite(latNum) && Number.isFinite(lonNum)) {
+      const tipoInferido = normalizarTipoCategoria(wpt.tipo, wpt.sym, wpt.desc);
+      const info = TIPOS_MARCA[tipoInferido] || TIPOS_MARCA.geral;
       ev = {
         id: wpt.id || `gpx-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         nome: String(wpt.nome || 'Ponto GPX').trim(),
-        tipo: normalizarTipoCategoria(wpt.tipo, wpt.sym, wpt.desc),
+        tipo: tipoInferido,
+        simbolo: (wpt.sym && Array.from(String(wpt.sym)).length <= 3) ? wpt.sym : info.icone,
+        cor: wpt.cor || info.cor,
         lat: Number(latNum.toFixed(6)),
         lon: Number(lonNum.toFixed(6)),
         nota: wpt.desc ? String(wpt.desc).trim() : '',
@@ -432,8 +567,6 @@
         origem: ficheiroAtivo || DEFAULT_GPX_NAME,
       };
       eventos.push(ev);
-      guardarLocal();
-      renderizarTudo();
     }
     if (ev) {
       window.abrirOpcoesPonto(ev.id);
@@ -453,25 +586,50 @@
     if (!ev) return;
 
     const inpNome = document.getElementById('opcoesPontoNome');
+    const inpLat = document.getElementById('opcoesPontoLat');
+    const inpLon = document.getElementById('opcoesPontoLon');
     const inpNota = document.getElementById('opcoesPontoNota');
-    const nomeAntigo = ev.nome;
+    const selIcone = document.getElementById('opcoesPontoIcone');
+    const inpCor = document.getElementById('opcoesPontoCor');
+
     const novoNome = inpNome ? inpNome.value.trim() : '';
+    if (!novoNome) {
+      notificarPonto('⚠️ Indica o nome da marca.');
+      if (inpNome) inpNome.focus();
+      return;
+    }
+
+    const novaLat = inpLat ? parseCoordenadaNautica(inpLat.value, true) : Number(ev.lat);
+    const novaLon = inpLon ? parseCoordenadaNautica(inpLon.value, false) : Number(ev.lon);
+    if (!Number.isFinite(novaLat) || !Number.isFinite(novaLon)) {
+      notificarPonto('⚠️ Latitude ou Longitude inválida. Usa Graus Min (ex: 37° 04.520\' N) ou decimal.');
+      return;
+    }
+
+    const latAntiga = ev.lat;
+    const lonAntiga = ev.lon;
+    const nomeAntigo = ev.nome;
     const novaNota = inpNota ? inpNota.value.trim() : '';
     const info = TIPOS_MARCA[tipoOpcoesSelecionado] || TIPOS_MARCA.geral;
+    const novoIcone = (selIcone && selIcone.value) ? selIcone.value : info.icone;
+    const novaCor = (inpCor && inpCor.value) ? inpCor.value : info.cor;
 
-    if (novoNome) ev.nome = novoNome;
+    ev.nome = novoNome;
+    ev.lat = Number(novaLat.toFixed(7));
+    ev.lon = Number(novaLon.toFixed(7));
     ev.tipo = info.chave;
-    ev.simbolo = info.icone;
-    ev.cor = info.cor;
+    ev.simbolo = novoIcone;
+    ev.cor = novaCor;
     ev.nota = novaNota;
+    ev.manual = true;
 
     guardarLocal();
     renderizarTudo();
     if (typeof window.atualizarWaypointPorCoordenadas === 'function') {
-      window.atualizarWaypointPorCoordenadas(ev.id, ev.lat, ev.lon, nomeAntigo, ev.nome, ev.nota);
+      window.atualizarWaypointPorCoordenadas(ev.id, latAntiga, lonAntiga, nomeAntigo, ev.nome, ev.nota, ev.lat, ev.lon, ev.simbolo, ev.cor);
     }
     window.fecharOpcoesPonto();
-    notificarPonto(`💾 Ponto atualizado: ${ev.nome}`);
+    notificarPonto(`💾 Alterações guardadas: ${ev.nome}`);
   };
 
   window.navegarOpcoesPonto = function navegarOpcoesPonto() {

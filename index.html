@@ -221,6 +221,7 @@
         <button class="drawer-filtro-btn ativo" data-filtro="todos">Todos</button>
         <button class="drawer-filtro-btn" data-filtro="proximos">🧭 Mais Próximos</button>
         <button class="drawer-filtro-btn" data-filtro="alfabetica">🔤 Nome A-Z</button>
+        <button type="button" id="btnAlterarMarcaGaveta" class="drawer-filtro-btn" onclick="window.abrirPainelAlterarMarca && window.abrirPainelAlterarMarca()" style="background:#1e3a8a;border-color:#60a5fa;color:#fff;">✏️ Alterar Marca</button>
       </div>
 
       <div id="drawerLista" class="drawer-lista">
@@ -357,6 +358,7 @@
           <button type="button" onclick="marcarEventoAtual()" style="flex:1;padding:8px;border:none;border-radius:8px;background:#0284c7;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">📍 Marcar Aqui</button>
           <button type="button" id="btnModoCliqueEvento" onclick="alternarModoCliqueEvento()" style="flex:1;padding:8px;border:1px solid #475569;border-radius:8px;background:#1e293b;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">🗺️ Clicar na Carta</button>
         </div>
+        <button type="button" id="btnAlterarMarcaPasta" onclick="window.abrirPainelAlterarMarca && window.abrirPainelAlterarMarca()" style="width:100%;padding:8px;border:1px solid #60a5fa;border-radius:8px;background:#1e3a8a;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">✏️ Alterar Marca</button>
         <details style="margin-top:2px;">
           <summary style="font-size:11.5px;font-weight:700;color:#4ade80;cursor:pointer;padding:4px 0;">⚡ Marcas Rápidas GPS Aorus (1 Toque)</summary>
           <div class="aorus-quick-grid">
@@ -375,14 +377,17 @@
       <div id="pastaEventosLista" style="padding:10px 12px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;flex:1;"></div>
     </aside>
 
-    <!-- JANELA DE OPÇÕES DO PONTO ESTILO OPENCPN -->
+    <!-- JANELA DE OPÇÕES / EDIÇÃO DE MARCA ESTILO OPENCPN -->
     <div id="opcoesPontoModal" class="opcoes-ponto-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="opcoesPontoTitulo" onclick="if(event.target===this) fecharOpcoesPonto()">
       <div class="opcoes-ponto-card">
         <div class="opcoes-ponto-header">
-          <div id="opcoesPontoTitulo" class="opcoes-ponto-titulo">⚙️ Opções do Ponto</div>
+          <div id="opcoesPontoTitulo" class="opcoes-ponto-titulo">✏️ Alterar Marca</div>
           <button type="button" id="btnFecharOpcoesPonto" class="opcoes-ponto-fechar" onclick="fecharOpcoesPonto()" title="Fechar">✖</button>
         </div>
         <div class="opcoes-ponto-body">
+          <label class="opcoes-ponto-label" for="opcoesPontoSelect">Selecionar Marca Guardada</label>
+          <select id="opcoesPontoSelect" class="opcoes-ponto-input" onchange="window.selecionarMarcaEdicaoPorId && window.selecionarMarcaEdicaoPorId(this.value)"></select>
+
           <div class="opcoes-ponto-coords-box">
             <div id="opcoesPontoCoordsNaut" class="opcoes-ponto-coords-naut">--</div>
             <div class="opcoes-ponto-coords-sub">
@@ -391,8 +396,19 @@
             </div>
           </div>
 
-          <label class="opcoes-ponto-label" for="opcoesPontoNome">Nome do Ponto</label>
+          <label class="opcoes-ponto-label" for="opcoesPontoNome">Nome da Marca</label>
           <input type="text" id="opcoesPontoNome" class="opcoes-ponto-input" placeholder="Nome do pesqueiro ou marca...">
+
+          <div class="opcoes-ponto-coords-grid">
+            <div>
+              <label class="opcoes-ponto-label" for="opcoesPontoLat">Latitude (Graus Min)</label>
+              <input type="text" id="opcoesPontoLat" class="opcoes-ponto-input" placeholder="37° 04.520' N" oninput="window.atualizarPreviewCoordsEdicao && window.atualizarPreviewCoordsEdicao()">
+            </div>
+            <div>
+              <label class="opcoes-ponto-label" for="opcoesPontoLon">Longitude (Graus Min)</label>
+              <input type="text" id="opcoesPontoLon" class="opcoes-ponto-input" placeholder="008° 40.150' W" oninput="window.atualizarPreviewCoordsEdicao && window.atualizarPreviewCoordsEdicao()">
+            </div>
+          </div>
 
           <label class="opcoes-ponto-label">Tipo de Pesca</label>
           <div class="opcoes-ponto-tipos">
@@ -402,10 +418,35 @@
             <button type="button" class="opcoes-tipo-btn" data-tipo="peguilho" onclick="selecionarTipoOpcoesPonto('peguilho')">🪝 Peguilho</button>
           </div>
 
-          <label class="opcoes-ponto-label" for="opcoesPontoNota">Nota Curta</label>
+          <div class="opcoes-ponto-icone-cor-grid">
+            <div>
+              <label class="opcoes-ponto-label" for="opcoesPontoIcone">Ícone</label>
+              <select id="opcoesPontoIcone" class="opcoes-ponto-input" onchange="window.atualizarBadgeEdicaoMarca && window.atualizarBadgeEdicaoMarca()">
+                <option value="📍">📍 Marca</option>
+                <option value="⚓">⚓ Âncora</option>
+                <option value="🪨">🪨 Rocha</option>
+                <option value="🦑">🦑 Lula</option>
+                <option value="🪝">🪝 Peguilho</option>
+                <option value="🐟">🐟 Pesca</option>
+                <option value="🔴">🔴 Posição</option>
+                <option value="⚠️">⚠️ Perigo</option>
+                <option value="⛽">⛽ Abastec.</option>
+                <option value="🏁">🏁 Destino</option>
+                <option value="💡">💡 Farol</option>
+                <option value="🟡">🟡 Amarela</option>
+                <option value="🆘">🆘 Emergência</option>
+              </select>
+            </div>
+            <div>
+              <label class="opcoes-ponto-label" for="opcoesPontoCor">Cor</label>
+              <input type="color" id="opcoesPontoCor" class="opcoes-ponto-input opcoes-ponto-color" value="#2563eb">
+            </div>
+          </div>
+
+          <label class="opcoes-ponto-label" for="opcoesPontoNota">Observações</label>
           <textarea id="opcoesPontoNota" class="opcoes-ponto-textarea" rows="2" placeholder="Fundo, profundidade, melhor maré, isco..."></textarea>
 
-          <button type="button" id="btnGuardarOpcoesPonto" class="opcoes-ponto-btn-guardar" onclick="guardarOpcoesPonto()">💾 Guardar</button>
+          <button type="button" id="btnGuardarOpcoesPonto" class="opcoes-ponto-btn-guardar" onclick="guardarOpcoesPonto()">💾 Guardar Alterações</button>
 
           <div class="opcoes-ponto-acoes">
             <button type="button" id="btnNavOpcoesPonto" class="opcoes-ponto-btn-nav" onclick="navegarOpcoesPonto()">🧭 Navegar para aqui</button>
@@ -413,10 +454,10 @@
           </div>
 
           <div id="opcoesPontoApagarPasso1" class="opcoes-ponto-apagar-box">
-            <button type="button" id="btnPedirApagarPonto" class="opcoes-ponto-btn-apagar" onclick="pedirConfirmacaoApagarPonto()">🗑️ Apagar Ponto</button>
+            <button type="button" id="btnPedirApagarPonto" class="opcoes-ponto-btn-apagar" onclick="pedirConfirmacaoApagarPonto()">🗑️ Apagar Marca</button>
           </div>
           <div id="opcoesPontoApagarPasso2" class="opcoes-ponto-confirm-box" style="display:none;">
-            <span class="opcoes-ponto-confirm-txt">⚠️ Apagar este ponto?</span>
+            <span class="opcoes-ponto-confirm-txt">⚠️ Apagar esta marca?</span>
             <div class="opcoes-ponto-confirm-btns">
               <button type="button" id="btnConfirmarApagarPonto" class="opcoes-ponto-btn-confirmar" onclick="confirmarApagarOpcoesPonto()">Confirmar Apagar?</button>
               <button type="button" id="btnCancelarApagarPonto" class="opcoes-ponto-btn-cancelar" onclick="cancelarConfirmacaoApagarPonto()">Cancelar</button>

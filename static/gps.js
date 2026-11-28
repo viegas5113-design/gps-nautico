@@ -858,6 +858,19 @@
           iconSize: [16, 16],
           iconAnchor: [8, 8]
         });
+      } else if (wpt.cor || (wpt.sym && wpt.sym !== 'Waypoint' && Array.from(wpt.sym).length <= 3)) {
+        const bgCor = wpt.cor || '#0284c7';
+        const simTxt = (wpt.sym && wpt.sym !== 'Waypoint' && Array.from(wpt.sym).length <= 3) ? wpt.sym : '⚓';
+        icone = L.divIcon({
+          className: 'marcador-gpx-custom',
+          html: `
+            <div style="background:${escaparHtml(bgCor)};color:#ffffff;border:2px solid #ffffff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.5);font-size:12px;font-weight:bold;">
+              ${escaparHtml(simTxt)}
+            </div>
+          `,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
       }
       const marcador = L.marker([wpt.lat, wpt.lon], { icon: icone });
 
@@ -1314,9 +1327,9 @@
     }
   };
 
-  window.atualizarWaypointPorCoordenadas = function(id, lat, lon, nomeAntigo, nomeNovo, notaNova) {
-    const latNum = Number(lat);
-    const lonNum = Number(lon);
+  window.atualizarWaypointPorCoordenadas = function(id, latAntiga, lonAntiga, nomeAntigo, nomeNovo, notaNova, latNova, lonNova, symNovo, corNovo) {
+    const latNum = Number(latAntiga);
+    const lonNum = Number(lonAntiga);
     const nomeLow = String(nomeAntigo || '').trim().toLowerCase();
     let alterou = false;
 
@@ -1329,11 +1342,23 @@
       if (mesmoId || mesmaCoord) {
         if (nomeNovo) w.nome = nomeNovo;
         if (notaNova !== undefined) w.desc = notaNova;
+        if (Number.isFinite(Number(latNova))) w.lat = Number(latNova);
+        if (Number.isFinite(Number(lonNova))) w.lon = Number(lonNova);
+        if (symNovo) w.sym = symNovo;
+        if (corNovo) w.cor = corNovo;
         if (w.camada && estado.camadaWaypoints) {
           estado.camadaWaypoints.removeLayer(w.camada);
           w.camada = null;
         }
         renderizarWaypointsGpx([w]);
+        if (estado.waypointAtivo && String(estado.waypointAtivo.id) === String(w.id)) {
+          estado.waypointAtivo.nome = w.nome;
+          estado.waypointAtivo.lat = w.lat;
+          estado.waypointAtivo.lon = w.lon;
+          const nomeEl = document.getElementById('navTargetNome');
+          if (nomeEl) nomeEl.textContent = `⚓ ${w.nome}`;
+          atualizarNavegacaoAtiva();
+        }
         alterou = true;
       }
     });
