@@ -1368,6 +1368,64 @@
     }
   };
 
+  window.sincronizarMarcasRecebidasGps = function(listaMarcas) {
+    if (!Array.isArray(listaMarcas) || listaMarcas.length === 0) return;
+    let alterou = false;
+    const novos = [];
+
+    for (const m of listaMarcas) {
+      if (!m || m.id === undefined || m.id === null) continue;
+      const lat = Number(m.lat);
+      const lon = Number(m.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+      const idStr = String(m.id);
+      const existente = estado.waypoints.find(w => String(w.id) === idStr);
+      if (existente) {
+        existente.nome = String(m.nome || existente.nome || 'Marca').trim();
+        existente.lat = lat;
+        existente.lon = lon;
+        existente.desc = m.nota !== undefined ? m.nota : (m.desc || '');
+        existente.sym = m.simbolo || m.sym || existente.sym || 'Waypoint';
+        existente.cor = m.cor || existente.cor;
+        existente.tipo = m.tipo || existente.tipo || '';
+        existente.manual = true;
+        existente.origem = 'Manual';
+        if (existente.camada && estado.camadaWaypoints) {
+          estado.camadaWaypoints.removeLayer(existente.camada);
+          existente.camada = null;
+        }
+        renderizarWaypointsGpx([existente]);
+        alterou = true;
+      } else {
+        const wpt = {
+          id: idStr,
+          nome: String(m.nome || 'Marca').trim(),
+          lat,
+          lon,
+          ele: m.ele ?? null,
+          desc: m.nota || m.desc || '',
+          sym: m.simbolo || m.sym || 'Waypoint',
+          cor: m.cor || null,
+          tipo: m.tipo || '',
+          origem: 'Manual',
+          manual: true,
+          criadoEmTs: Number(m.criadoEmTs) || Date.now()
+        };
+        estado.waypoints.unshift(wpt);
+        novos.push(wpt);
+        alterou = true;
+      }
+    }
+
+    if (novos.length > 0) {
+      renderizarWaypointsGpx(novos);
+    }
+    if (alterou) {
+      atualizarContadorWaypoints();
+      atualizarListaWaypointsGaveta();
+    }
+  };
+
   // ==========================================
   // GESTÃO DA GAVETA E LISTA DE WAYPOINTS
   // ==========================================

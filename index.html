@@ -222,6 +222,7 @@
         <button class="drawer-filtro-btn" data-filtro="proximos">🧭 Mais Próximos</button>
         <button class="drawer-filtro-btn" data-filtro="alfabetica">🔤 Nome A-Z</button>
         <button type="button" id="btnAlterarMarcaGaveta" class="drawer-filtro-btn" onclick="window.abrirPainelAlterarMarca && window.abrirPainelAlterarMarca()" style="background:#1e3a8a;border-color:#60a5fa;color:#fff;">✏️ Alterar Marca</button>
+        <button type="button" id="btnSyncWifiGaveta" class="drawer-filtro-btn" onclick="window.abrirPainelSyncWifi && window.abrirPainelSyncWifi()" style="background:#0f766e;border-color:#2dd4bf;color:#fff;">🔄 Sincronizar (Wi-Fi)</button>
       </div>
 
       <div id="drawerLista" class="drawer-lista">
@@ -358,7 +359,10 @@
           <button type="button" onclick="marcarEventoAtual()" style="flex:1;padding:8px;border:none;border-radius:8px;background:#0284c7;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">📍 Marcar Aqui</button>
           <button type="button" id="btnModoCliqueEvento" onclick="alternarModoCliqueEvento()" style="flex:1;padding:8px;border:1px solid #475569;border-radius:8px;background:#1e293b;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">🗺️ Clicar na Carta</button>
         </div>
-        <button type="button" id="btnAlterarMarcaPasta" onclick="window.abrirPainelAlterarMarca && window.abrirPainelAlterarMarca()" style="width:100%;padding:8px;border:1px solid #60a5fa;border-radius:8px;background:#1e3a8a;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">✏️ Alterar Marca</button>
+        <div style="display:flex;gap:6px;">
+          <button type="button" id="btnAlterarMarcaPasta" onclick="window.abrirPainelAlterarMarca && window.abrirPainelAlterarMarca()" style="flex:1;padding:8px;border:1px solid #60a5fa;border-radius:8px;background:#1e3a8a;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">✏️ Alterar Marca</button>
+          <button type="button" id="btnSyncWifiPasta" onclick="window.abrirPainelSyncWifi && window.abrirPainelSyncWifi()" style="flex:1;padding:8px;border:1px solid #2dd4bf;border-radius:8px;background:#0f766e;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">🔄 Sincronizar (Wi-Fi)</button>
+        </div>
         <details style="margin-top:2px;">
           <summary style="font-size:11.5px;font-weight:700;color:#4ade80;cursor:pointer;padding:4px 0;">⚡ Marcas Rápidas GPS Aorus (1 Toque)</summary>
           <div class="aorus-quick-grid">
@@ -463,6 +467,27 @@
               <button type="button" id="btnCancelarApagarPonto" class="opcoes-ponto-btn-cancelar" onclick="cancelarConfirmacaoApagarPonto()">Cancelar</button>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAINEL DE SINCRONIZAÇÃO WI-FI LOCAL (PC <-> TELEMÓVEL) -->
+    <div id="syncWifiModal" class="opcoes-ponto-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="syncWifiTitulo" onclick="if(event.target===this && window.fecharPainelSyncWifi) window.fecharPainelSyncWifi()">
+      <div class="opcoes-ponto-card">
+        <div class="opcoes-ponto-header">
+          <div id="syncWifiTitulo" class="opcoes-ponto-titulo">🔄 Sincronizar Marcas (Wi-Fi)</div>
+          <button type="button" class="opcoes-ponto-fechar" onclick="window.fecharPainelSyncWifi && window.fecharPainelSyncWifi()" title="Fechar">✖</button>
+        </div>
+        <div class="opcoes-ponto-body">
+          <label class="opcoes-ponto-label" for="inputSyncWifiUrl">Endereço do Servidor Local (PC em Casa)</label>
+          <input type="url" id="inputSyncWifiUrl" class="opcoes-ponto-input" placeholder="http://192.168.1.195:8099" onchange="window.guardarUrlSyncWifi && window.guardarUrlSyncWifi()">
+
+          <div id="syncWifiStatus" style="padding:8px 10px;border-radius:8px;background:#020617;border:1px solid #1e293b;font-size:12px;color:#cbd5e1;line-height:1.4;">
+            Liga-te ao Wi-Fi de casa para enviar ou receber as tuas marcas entre o telemóvel e o PC.
+          </div>
+
+          <button type="button" id="btnEnviarMarcasWifi" class="opcoes-ponto-btn-guardar" onclick="window.enviarMarcasWifi && window.enviarMarcasWifi()">⬆️ Enviar Marcas para o PC</button>
+          <button type="button" id="btnReceberMarcasWifi" class="opcoes-ponto-btn-nav" style="padding:9px 12px;font-size:13px;" onclick="window.receberMarcasWifi && window.receberMarcasWifi()">⬇️ Receber Marcas do PC</button>
         </div>
       </div>
     </div>

@@ -1,7 +1,7 @@
 // Service Worker Offline-First para o GPS Náutico Independente
 // Funciona 100% no telemóvel mesmo com o computador desligado e sem internet no mar.
 
-const CACHE_NAME = 'gps-nautico-offline-v31';
+const CACHE_NAME = 'gps-nautico-offline-v32';
 const TILE_CACHE_NAME = 'gps-nautico-tiles-v1';
 
 const RECURSOS_ESSENCIAIS = [
@@ -65,6 +65,11 @@ self.addEventListener('activate', (evento) => {
 self.addEventListener('fetch', (evento) => {
   if (evento.request.method !== 'GET') return;
   const url = new URL(evento.request.url);
+
+  // Pedidos à API local (/api/marcas, etc.) vão sempre à rede sem passar pela cache offline
+  if (url.pathname.startsWith('/api/')) {
+    return;
+  }
 
   // Não intercetar APIs externas (Open-Meteo, VigilanteAI LAN) — geridas via localStorage
   if (url.hostname.includes('open-meteo.com') || (url.origin !== self.location.origin &&

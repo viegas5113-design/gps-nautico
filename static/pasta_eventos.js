@@ -1016,6 +1016,187 @@
     }
   };
 
+  const SYNC_WIFI_URL_KEY = 'gps_nautico_sync_wifi_url_v1';
+
+  function obterUrlSyncWifiPadrao() {
+    try {
+      const guardada = localStorage.getItem(SYNC_WIFI_URL_KEY);
+      if (guardada && guardada.trim()) return guardada.trim().replace(/\/+$/, '');
+    } catch (_) {}
+    const orig = String(window.location.origin || '');
+    if (/^https?:\/\/(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.|127\.0\.0\.1|localhost)/i.test(orig)) {
+      return orig.replace(/\/+$/, '');
+    }
+    return 'http://192.168.1.195:8099';
+  }
+
+  function atualizarStatusSyncWifi(texto, tipo = 'info') {
+    const el = document.getElementById('syncWifiStatus');
+    if (!el) return;
+    el.textContent = texto;
+    if (tipo === 'ok') {
+      el.style.borderColor = '#10b981';
+      el.style.color = '#a7f3d0';
+    } else if (tipo === 'aviso') {
+      el.style.borderColor = '#f59e0b';
+      el.style.color = '#fde68a';
+    } else {
+      el.style.borderColor = '#1e293b';
+      el.style.color = '#cbd5e1';
+    }
+  }
+
+  window.guardarUrlSyncWifi = function guardarUrlSyncWifi() {
+    const inp = document.getElementById('inputSyncWifiUrl');
+    const url = inp ? inp.value.trim().replace(/\/+$/, '') : '';
+    if (url) {
+      try {
+        localStorage.setItem(SYNC_WIFI_URL_KEY, url);
+      } catch (_) {}
+    }
+    return url || obterUrlSyncWifiPadrao();
+  };
+
+  window.abrirPainelSyncWifi = function abrirPainelSyncWifi() {
+    const modal = document.getElementById('syncWifiModal');
+    const inp = document.getElementById('inputSyncWifiUrl');
+    if (!modal) return;
+    if (inp) inp.value = obterUrlSyncWifiPadrao();
+    atualizarStatusSyncWifi('Liga-te ao Wi-Fi de casa para enviar ou receber as tuas marcas entre o telemóvel e o PC.');
+    modal.style.display = 'flex';
+  };
+
+  window.fecharPainelSyncWifi = function fecharPainelSyncWifi() {
+    const modal = document.getElementById('syncWifiModal');
+    if (modal) modal.style.display = 'none';
+  };
+
+  function recolherMarcasParaSyncWifi() {
+    const mapaPorId = new Map();
+    for (const ev of eventos) {
+      if (!ev || ev.id === undefined || ev.id === null) continue;
+      mapaPorId.set(String(ev.id), { ...ev, manual: true, origem: 'Manual' });
+    }
+    const estGps = window.__vigilanteEstadoGps;
+    if (estGps && Array.isArray(estGps.waypoints)) {
+      for (const w of estGps.waypoints) {
+        if (!w || !ehPontoManual(w) || w.id === undefined || w.id === null) continue;
+        const idStr = String(w.id);
+        if (mapaPorId.has(idStr)) continue;
+        const tipo = TIPOS_MARCA[w.tipo] ? w.tipo : normalizarTipoCategoria(w.tipo, w.sym, w.desc);
+        const info = TIPOS_MARCA[tipo] || TIPOS_MARCA.geral;
+        mapaPorId.set(idStr, {
+          id: idStr,
+          nome: String(w.nome || 'Marca').trim(),
+          tipo,
+          simbolo: (w.sym && Array.from(String(w.sym)).length <= 3) ? w.sym : info.icone,
+          cor: w.cor || info.cor,
+          lat: Number(w.lat),
+          lon: Number(w.lon),
+          nota: w.desc ? String(w.desc).trim() : '',
+          manual: true,
+          origem: 'Manual',
+          criadoEmTs: Number(w.criadoEmTs) || Date.now(),
+        });
+      }
+    }
+    return Array.from(mapaPorId.values());
+  }
+
+  async function fetchComTimeout(url, opcoes = {}, timeoutMs = 4500) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      return await fetch(url, { ...opcoes, signal: ctrl.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  window.enviarMarcasWifi = async function enviarMarcasWifi() {
+    const baseUrl = window.guardarUrlSyncWifi();
+    const marcas = recolherMarcasParaSyncWifi();
+    atualizarStatusSyncWifi(`⏳ A enviar ${marcas.length} marca(s) para ${baseUrl}...`);
+    try {
+      const resp = await fetchComTimeout(`${baseUrl}/api/marcas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ marcas }),
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const dados = await resp.json();
+      const msg = `✅ Enviadas ${marcas.length} marca(s) para o PC (${dados.total ?? marcas.length} guardadas no servidor).`;
+      atualizarStatusSyncWifi(msg, 'ok');
+      notificarPonto('⬆️ Marcas enviadas para o PC!');
+    } catch (_) {
+      const msg = '📡 Sem ligação ao PC (Wi-Fi de casa). No mar, as tuas marcas continuam guardadas offline neste aparelho.';
+      atualizarStatusSyncWifi(msg, 'aviso');
+      notificarPonto('📡 Sem ligação ao Wi-Fi de casa.');
+    }
+  };
+
+  window.receberMarcasWifi = async function receberMarcasWifi() {
+    const baseUrl = window.guardarUrlSyncWifi();
+    atualizarStatusSyncWifi(`⏳ A receber marcas de ${baseUrl}...`);
+    try {
+      const resp = await fetchComTimeout(`${baseUrl}/api/marcas`, { method: 'GET' });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const dados = await resp.json();
+      const recebidas = Array.isArray(dados.marcas) ? dados.marcas : [];
+      if (recebidas.length === 0) {
+        atualizarStatusSyncWifi('ℹ️ O servidor do PC ainda não tem marcas guardadas.', 'info');
+        return;
+      }
+
+      let novas = 0;
+      let atualizadas = 0;
+      for (const m of recebidas) {
+        if (!m || m.id === undefined || m.id === null) continue;
+        const lat = Number(m.lat);
+        const lon = Number(m.lon);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+        const idStr = String(m.id);
+        const idx = eventos.findIndex((e) => String(e.id) === idStr);
+        const tipo = TIPOS_MARCA[m.tipo] ? m.tipo : normalizarTipoCategoria(m.tipo, m.sym, m.nota || m.desc);
+        const info = TIPOS_MARCA[tipo] || TIPOS_MARCA.geral;
+        const registo = {
+          ...m,
+          id: idStr,
+          nome: String(m.nome || 'Marca').trim(),
+          tipo,
+          simbolo: m.simbolo || (m.sym && Array.from(String(m.sym)).length <= 3 ? m.sym : info.icone),
+          cor: m.cor || info.cor,
+          lat: Number(lat.toFixed(7)),
+          lon: Number(lon.toFixed(7)),
+          nota: m.nota !== undefined ? m.nota : (m.desc || ''),
+          manual: true,
+          origem: 'Manual',
+        };
+        if (idx >= 0) {
+          eventos[idx] = registo;
+          atualizadas += 1;
+        } else {
+          eventos.unshift(registo);
+          novas += 1;
+        }
+      }
+
+      guardarLocal();
+      renderizarTudo();
+      if (typeof window.sincronizarMarcasRecebidasGps === 'function') {
+        window.sincronizarMarcasRecebidasGps(recebidas);
+      }
+      const dataStr = dados.ultima_atualizacao ? ` (${dados.ultima_atualizacao})` : '';
+      const msg = `✅ Recebidas ${recebidas.length} marca(s) do PC: ${novas} nova(s), ${atualizadas} atualizada(s)${dataStr}.`;
+      atualizarStatusSyncWifi(msg, 'ok');
+      notificarPonto(`⬇️ ${recebidas.length} marca(s) sincronizadas!`);
+    } catch (_) {
+      const msg = '📡 Sem ligação ao PC (Wi-Fi de casa). No mar, as tuas marcas continuam guardadas offline neste aparelho.';
+      atualizarStatusSyncWifi(msg, 'aviso');
+      notificarPonto('📡 Sem ligação ao Wi-Fi de casa.');
+    }
+  };
+
   function ligarAoMapaQuandoPronto(tentativas = 0) {
     const m = obterMapa();
     if (!m) {
