@@ -1,7 +1,7 @@
 {
   "versao": 1,
-  "atualizado_em": "2026-11-28T08:43:22.560Z",
-  "total": 3,
+  "atualizado_em": "2026-11-28T08:44:23.844Z",
+  "total": 4,
   "pontos": [
     {
       "id": "mob_1795365120994",
@@ -15,8 +15,23 @@
       "nota": "",
       "manual": true,
       "origem": "Manual",
-      "criadoEmTs": 1795855402560,
+      "criadoEmTs": 1795855463844,
       "criado_em": "2026-11-22 16:32:01"
+    },
+    {
+      "id": "wpt_1795855399263_3653",
+      "nome": "WPT_3656",
+      "tipo": "rocha",
+      "simbolo": "🪨",
+      "cor": "#57534e",
+      "lat": 37.09825,
+      "lon": -8.65175,
+      "ele": null,
+      "nota": "",
+      "manual": true,
+      "origem": "Manual",
+      "criadoEmTs": 1795855463844,
+      "criado_em": "2026-11-28 08:43:36"
     },
     {
       "id": "ev-1795461053616-959",
